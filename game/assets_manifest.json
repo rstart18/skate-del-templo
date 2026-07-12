@@ -1,0 +1,13 @@
+{
+  "objects": {
+    "banca_plaza": {
+      "model": "assets/models_optimized/7c695f3c94f30352_opt.glb"
+    },
+    "estatua_santander": {
+      "model": "assets/models/7423743c79d9034c.glb"
+    },
+    "templo_historico": {
+      "model": "assets/models/255d623117535c9d.glb?v=2"
+    }
+  }
+}

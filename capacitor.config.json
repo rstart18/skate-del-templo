@@ -1,0 +1,11 @@
+{
+  "appId": "com.snaikyy.skatedeltemplo",
+  "appName": "Skate del Templo",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0b0e14"
+  },
+  "ios": {
+    "backgroundColor": "#0b0e14"
+  }
+}

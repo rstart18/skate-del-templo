@@ -1,0 +1,9 @@
+{
+  "name": "Skate del Templo",
+  "short_name": "SkateTemplo",
+  "start_url": "./skate.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14"
+}

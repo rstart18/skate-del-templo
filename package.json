@@ -1,0 +1,20 @@
+{
+  "name": "skate-del-templo",
+  "version": "1.0.0",
+  "description": "SKATE DEL TEMPLO — juego web Three.js (estilo THPS) ambientado en el Templo Histórico de Villa del Rosario. Web + apps Android/iOS con Capacitor. Incluye el servidor MCP (Python) del pipeline de assets 3D.",
+  "scripts": {
+    "dist": "node scripts/build-dist.mjs",
+    "web": "npm run dist && npx surge dist snaikyy-skate.surge.sh",
+    "sync": "npm run dist && npx cap sync",
+    "android": "npm run sync && npx cap open android",
+    "ios": "npm run sync && npx cap open ios"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1"
+  }
+}

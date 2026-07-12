@@ -1,0 +1,44 @@
+# Secrets — NEVER commit API keys
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# AI-generated binary assets (regenerated from the pipeline; not versioned)
+assets/images/*.png
+assets/models/*.glb
+assets/models_rigged/*.glb
+assets/models_optimized/*.glb
+assets/models_final/*.glb
+assets/animations/*.glb
+assets/animations/*.fbx
+
+# Keep the folder structure in git
+!assets/**/.gitkeep
+
+# EXCEPCION: los assets FINALES que el juego carga SI van al repo
+# (sin ellos, un clon fresco no puede correr el juego ni compilar las apps)
+!assets/models/53914247a877a402.glb
+!assets/models/7423743c79d9034c.glb
+!assets/models/255d623117535c9d.glb
+!assets/models_final/skater.glb
+!assets/models_optimized/7c695f3c94f30352_opt.glb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binarios de herramientas (cloudflared, etc.)
+tools/
+dist/
+skate-del-templo.zip
+
+# Node (Capacitor)
+node_modules/
