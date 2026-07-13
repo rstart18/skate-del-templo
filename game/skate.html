@@ -288,9 +288,47 @@ function buildTemplo(){
   }
   walls.push({minX:-9.4,maxX:9.4,minZ:tz-21.7,maxZ:tz-20.7,h:3.4});
 
+  // --- SANTUARIO DE SANTANDER (del video real): muro monumental de ladrillo
+  //     con 3 arcos al fondo de la nave; la estatua vive DENTRO, como en el sitio.
+  {
+    const sw=15, sh=7.5, sd=1.1, szv=tz-19.5;
+    const ladrilloX=new THREE.MeshStandardMaterial({map:tx('ladrillo',0.6,0.6),color:0xa06a52,roughness:.95});
+    const shape=new THREE.Shape();
+    shape.moveTo(-sw/2,0);shape.lineTo(-sw/2,sh);shape.lineTo(sw/2,sh);shape.lineTo(sw/2,0);shape.lineTo(-sw/2,0);
+    const arco=(cx,w,h)=>{const p=new THREE.Path();
+      p.moveTo(cx-w/2,0);p.lineTo(cx-w/2,h-w/2);p.absarc(cx,h-w/2,w/2,Math.PI,0,true);
+      p.lineTo(cx+w/2,0);p.lineTo(cx-w/2,0);shape.holes.push(p);};
+    arco(0,3.6,5);arco(4.6,2.2,3.4);arco(-4.6,2.2,3.4);
+    const g=new THREE.ExtrudeGeometry(shape,{depth:sd,bevelEnabled:false});
+    const muro=new THREE.Mesh(g,ladrilloX);
+    muro.position.set(0,y0,szv);muro.castShadow=true;muro.receiveShadow=true;scene.add(muro);
+    // molduras blancas: cornisa, pilastras del arco central y banda superior
+    box(sw+0.4,0.6,sd+0.3,M.muroBlanco,0,y0+sh+0.3,szv+sd/2);
+    for(const px of [-2.15,2.15]) box(0.5,5.2,0.28,M.muroBlanco,px,y0+2.6,szv+sd+0.1);
+    box(4.6,0.7,0.28,M.muroBlanco,0,y0+5.55,szv+sd+0.1);
+    // estatuillas blancas en los arcos laterales (nichos del video)
+    const yeso=new THREE.MeshStandardMaterial({color:0xe8e4da,roughness:.7});
+    for(const sx of [-4.6,4.6]){
+      box(0.75,0.8,0.75,M.piedra,sx,y0+0.4,szv+sd/2);
+      const cuerpo=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.26,1.15,8),yeso);
+      cuerpo.position.set(sx,y0+1.38,szv+sd/2);cuerpo.castShadow=true;scene.add(cuerpo);
+      const cabeza=new THREE.Mesh(new THREE.SphereGeometry(0.17,8,7),yeso);
+      cabeza.position.set(sx,y0+2.08,szv+sd/2);scene.add(cabeza);
+      walls.push({minX:sx-0.45,maxX:sx+0.45,minZ:szv+sd/2-0.45,maxZ:szv+sd/2+0.45,h:y0+0.8,walkTop:true});
+    }
+    // colision: machones solidos (los arcos se atraviesan patinando)
+    for(const[a,b] of [[-7.5,-5.7],[-3.5,-1.8],[1.8,3.5],[5.7,7.5]])
+      walls.push({minX:a,maxX:b,minZ:szv-0.2,maxZ:szv+sd+0.2,h:y0+sh});
+  }
+
   // --- pedestal para la estatua de Santander (la estatua llega por pipeline) ---
-  box(1.5,1.7,1.5,M.concreto,0,y0+0.85,tz+0.2);
-  walls.push({minX:-0.8,maxX:0.8,minZ:tz-0.6,maxZ:tz+1,h:2.9});
+  // piedra VERDE como el real (video s31-s40), frente al santuario
+  const pedestalVerde=new THREE.MeshStandardMaterial({color:0x62796c,roughness:.7});
+  {
+    const p=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.7,1.5),pedestalVerde);
+    p.position.set(0,y0+0.85,tz-17.4);p.castShadow=true;p.receiveShadow=true;scene.add(p);
+  }
+  walls.push({minX:-0.8,maxX:0.8,minZ:tz-18.2,maxZ:tz-16.6,h:2.9});
 
   // --- PALMERAS REALES (firma del lugar: troncos altos grises) ---
   const palmaTronco=new THREE.MeshStandardMaterial({color:0xb9bdb4,roughness:.9});
@@ -1479,8 +1517,8 @@ const PLACEMENT = {
   // pos=[x,y,z] (y = altura del suelo donde se apoya la base), rot=[x,y,z] rad, scale.
   // El loader auto-aterriza cada modelo en pos.y (snapGround), así no hay que calcular el offset.
   banca_plaza: { pos:[3,0,26], rot:[0,Math.PI,0], scale:1.7 },
-  // sobre el pedestal bajo el arco central del templo, mirando a la plaza
-  estatua_santander: { pos:[0,2.9,-45.8], rot:[0,-Math.PI/2,0], scale:2.2 },
+  // sobre el pedestal verde, dentro del santuario al fondo de la nave (video real)
+  estatua_santander: { pos:[0,2.9,-63.4], rot:[0,-Math.PI/2,0], scale:2.2 },
   // Templo Historico (malla Tripo generada de la foto real). El arco enrejado
   // mira a la plaza (+z); la nave en ruinas procedural continua detras.
   templo_historico: { pos:[0,1.2,-46.5], rot:[0,-Math.PI/2,0], scale:29 },
