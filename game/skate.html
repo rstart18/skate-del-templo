@@ -192,28 +192,12 @@ const ramps=[]; // {type:'kicker'|'qp'|'stairs', ...}
 const walls=[]; // {minX,maxX,minZ,maxZ,h}
 const rails=[]; // {x1,z1,x2,z2,y}
 
-/* ---------- suelo: plaza de ladrillo + parque ----------
-   Ambos planos llevan un AGUJERO rectangular donde va la PISCINA hundida
-   (x 24..44, z -41..-29): sin el hueco, el plano taparia el foso. */
-const POOL={minX:24,maxX:44,minZ:-41,maxZ:-29,depth:0.75};
-function planoConHueco(w,h,cx,cz,y,mat){
-  // plano XY rotado -90 en X: localY = cz - worldZ
-  const s=new THREE.Shape();
-  s.moveTo(-w/2,-h/2);s.lineTo(w/2,-h/2);s.lineTo(w/2,h/2);s.lineTo(-w/2,h/2);s.lineTo(-w/2,-h/2);
-  const p=new THREE.Path();
-  const x1=POOL.minX-cx,x2=POOL.maxX-cx,y1=cz-POOL.maxZ,y2=cz-POOL.minZ;
-  p.moveTo(x1,y1);p.lineTo(x2,y1);p.lineTo(x2,y2);p.lineTo(x1,y2);p.lineTo(x1,y1);
-  s.holes.push(p);
-  const m=new THREE.Mesh(new THREE.ShapeGeometry(s),mat);
-  m.rotation.x=-Math.PI/2;m.position.set(cx,y,cz);m.receiveShadow=true;scene.add(m);
-  return m;
-}
+/* ---------- suelo: plaza de ladrillo + parque ---------- */
 {
-  planoConHueco(400,400,0,0,-0.02,M.pasto);
-  // ShapeGeometry usa UVs en unidades del mundo: repeat por metro (misma densidad
-  // que el plano original: 14 rep / 90m y 18 rep / 120m)
-  const ladrilloPlano=new THREE.MeshStandardMaterial({map:tx('ladrillo',14/90,18/120),roughness:.95});
-  planoConHueco(90,120,0,10,0,ladrilloPlano);
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(400,400),M.pasto);
+  g.rotation.x=-Math.PI/2;g.position.y=-0.02;g.receiveShadow=true;scene.add(g);
+  const plaza=new THREE.Mesh(new THREE.PlaneGeometry(90,120),M.ladrillo);
+  plaza.rotation.x=-Math.PI/2;plaza.position.set(0,0,10);plaza.receiveShadow=true;scene.add(plaza);
 }
 
 /* ---------- EL TEMPLO (fondo norte, z negativo) ---------- */
@@ -514,8 +498,7 @@ farol(-34,0);farol(34,0);farol(-34,46);farol(34,46);farol(-12,64);farol(12,64);
    ALTURA DEL SUELO
    ============================================================ */
 function groundHeight(x,z){
-  // FOSOS: dentro de la piscina el piso base queda BAJO el nivel de la plaza
-  let h=(x>=POOL.minX&&x<=POOL.maxX&&z>=POOL.minZ&&z<=POOL.maxZ)?-POOL.depth:0;
+  let h=0;
   // escaleras del atrio
   for(const r of ramps){
     if(r.type==='stairs'){
@@ -588,58 +571,63 @@ function buildSitio(){
   }
   // perimetro con vanos: los quarter pipes ocupan x=+-45 en z~3..37
   cerca(-44,-55,-44,0); cerca(-44,40,-44,68);
-  // la cerca este se ABRE en el tramo de la piscina (z -42..-28)
-  cerca(44,-55,44,-42); cerca(44,-28,44,0); cerca(44,40,44,68);
+  // cerca este corrida a x=52 (la calle se movio +8 para dar espacio)
+  cerca(52,-55,52,0); cerca(52,40,52,68);
   cerca(-44,70,-6,70); cerca(6,70,44,70);   // sur con entrada central
 
-  /* ---------- PISCINA hundida (area marcada por el usuario: del atrio a la calle) ---------- */
+  /* ---------- PLATAFORMA AMPLIADA + PISCINA (rediseno del usuario) ----------
+     El piso del templo (1.2m) se extiende hacia el este hasta cerca de la
+     calle corrida, y la piscina va hundida DENTRO de esa plataforma. */
   {
-    const P=POOL, cx=(P.minX+P.maxX)/2, czp=(P.minZ+P.maxZ)/2, L=P.maxX-P.minX, A=P.maxZ-P.minZ;
-    // fondo y paredes interiores del foso
-    box(L,0.06,A,M.piedraRealPiso,cx,-P.depth-0.03,czp);
-    const pared=new THREE.MeshStandardMaterial({map:tx('concreto',2,0.5),roughness:.9});
-    box(L,P.depth,0.12,pared,cx,-P.depth/2,P.minZ+0.06);
-    box(L,P.depth,0.12,pared,cx,-P.depth/2,P.maxZ-0.06);
-    box(0.12,P.depth,A,pared,P.minX+0.06,-P.depth/2,czp);
-    box(0.12,P.depth,A,pared,P.maxX-0.06,-P.depth/2,czp);
-    // escalones: 2 al OESTE (lado atrio), 3 al ESTE (lado calle) — ancho completo
-    box(0.8,0.5,A,M.piedraRealPiso,P.minX+0.4,-0.5,czp);
-    box(0.8,0.25,A,M.piedraRealPiso,P.minX+1.2,-0.625,czp);
-    walls.push({minX:P.minX,maxX:P.minX+0.8,minZ:P.minZ,maxZ:P.maxZ,h:-0.25,walkTop:true});
-    walls.push({minX:P.minX+0.8,maxX:P.minX+1.6,minZ:P.minZ,maxZ:P.maxZ,h:-0.5,walkTop:true});
-    box(0.54,0.56,A,M.piedraRealPiso,P.maxX-0.27,-0.47,czp);
-    box(0.54,0.375,A,M.piedraRealPiso,P.maxX-0.8,-0.56,czp);
-    box(0.54,0.19,A,M.piedraRealPiso,P.maxX-1.33,-0.655,czp);
-    walls.push({minX:P.maxX-0.54,maxX:P.maxX,minZ:P.minZ,maxZ:P.maxZ,h:-0.19,walkTop:true});
-    walls.push({minX:P.maxX-1.07,maxX:P.maxX-0.54,minZ:P.minZ,maxZ:P.maxZ,h:-0.375,walkTop:true});
-    walls.push({minX:P.maxX-1.6,maxX:P.maxX-1.07,minZ:P.minZ,maxZ:P.maxZ,h:-0.56,walkTop:true});
-    // bordes largos: pared fina que bloquea SOLO desde adentro (h=0) — desde la
-    // plaza pasas por encima y caes; el drop-in queda natural
-    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.minZ-0.15,maxZ:P.minZ+0.15,h:0});
-    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.maxZ-0.15,maxZ:P.maxZ+0.15,h:0});
-    // franjas de drenaje + coping grindable en los rims largos
+    const PX1=23,PX2=48,PZ1=-43,PZ2=-27,H=1.2;          // plataforma
+    const P={minX:26,maxX:45,minZ:-40,maxZ:-30};        // piscina (fondo a 0.45)
+    const F=0.45;                                        // altura del fondo
+    // plataforma: 4 piezas alrededor de la piscina
+    box(P.minX-PX1,H,PZ2-PZ1,M.piedraRealPiso,(PX1+P.minX)/2,H/2,(PZ1+PZ2)/2);
+    box(PX2-P.maxX,H,PZ2-PZ1,M.piedraRealPiso,(P.maxX+PX2)/2,H/2,(PZ1+PZ2)/2);
+    box(P.maxX-P.minX,H,P.minZ-PZ1,M.piedraRealPiso,(P.minX+P.maxX)/2,H/2,(PZ1+P.minZ)/2);
+    box(P.maxX-P.minX,H,PZ2-P.maxZ,M.piedraRealPiso,(P.minX+P.maxX)/2,H/2,(P.maxZ+PZ2)/2);
+    walls.push({minX:PX1,maxX:P.minX,minZ:PZ1,maxZ:PZ2,h:H,walkTop:true});
+    walls.push({minX:P.maxX,maxX:PX2,minZ:PZ1,maxZ:PZ2,h:H,walkTop:true});
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:PZ1,maxZ:P.minZ,h:H,walkTop:true});
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.maxZ,maxZ:PZ2,h:H,walkTop:true});
+    // piscina: fondo + escalones (2 oeste, 3 este) a lo ancho completo
+    const cx=(P.minX+P.maxX)/2, czp=(P.minZ+P.maxZ)/2, A=P.maxZ-P.minZ;
+    box(P.maxX-P.minX,F,A,M.piedraRealPiso,cx,F/2,czp);
+    walls.push({minX:P.minX+1.6,maxX:P.maxX-1.6,minZ:P.minZ,maxZ:P.maxZ,h:F,walkTop:true});
+    box(0.8,0.95,A,M.piedraRealPiso,P.minX+0.4,0.475,czp);
+    box(0.8,0.7,A,M.piedraRealPiso,P.minX+1.2,0.35,czp);
+    walls.push({minX:P.minX,maxX:P.minX+0.8,minZ:P.minZ,maxZ:P.maxZ,h:0.95,walkTop:true});
+    walls.push({minX:P.minX+0.8,maxX:P.minX+1.6,minZ:P.minZ,maxZ:P.maxZ,h:0.7,walkTop:true});
+    box(0.54,1.01,A,M.piedraRealPiso,P.maxX-0.27,0.505,czp);
+    box(0.54,0.83,A,M.piedraRealPiso,P.maxX-0.8,0.415,czp);
+    box(0.54,0.64,A,M.piedraRealPiso,P.maxX-1.33,0.32,czp);
+    walls.push({minX:P.maxX-0.54,maxX:P.maxX,minZ:P.minZ,maxZ:P.maxZ,h:1.01,walkTop:true});
+    walls.push({minX:P.maxX-1.07,maxX:P.maxX-0.54,minZ:P.minZ,maxZ:P.maxZ,h:0.83,walkTop:true});
+    walls.push({minX:P.maxX-1.6,maxX:P.maxX-1.07,minZ:P.minZ,maxZ:P.maxZ,h:0.64,walkTop:true});
+    // drenajes oscuros + coping grindable (10cm afuera: el drop-in no engancha)
     const dren=new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:.6});
     for(const dz of [P.minZ+0.18,P.maxZ-0.18]){
-      const f=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.3),dren);
-      f.position.set(cx,0.02,dz);f.receiveShadow=true;scene.add(f);
+      const f=new THREE.Mesh(new THREE.BoxGeometry(P.maxX-P.minX,0.04,0.3),dren);
+      f.position.set(cx,H+0.02,dz);f.receiveShadow=true;scene.add(f);
     }
-    // coping 10cm AFUERA del borde: el drop-in cae limpio (no cruza el riel en
-    // el aire), pero un ollie al rim si lo engancha
-    rails.push({x1:P.minX,z1:P.minZ-0.1,x2:P.maxX,z2:P.minZ-0.1,y:0});
-    rails.push({x1:P.minX,z1:P.maxZ+0.1,x2:P.maxX,z2:P.maxZ+0.1,y:0});
+    rails.push({x1:P.minX,z1:P.minZ-0.1,x2:P.maxX,z2:P.minZ-0.1,y:H});
+    rails.push({x1:P.minX,z1:P.maxZ+0.1,x2:P.maxX,z2:P.maxZ+0.1,y:H});
   }
 
   // Calles a ambos costados (Ruta 70 al este) con linea central discontinua
   const ac=document.createElement('canvas'); ac.width=64; ac.height=256;
   const ag=ac.getContext('2d'); ag.fillStyle='#3a3d42'; ag.fillRect(0,0,64,256);
   ag.fillStyle='#e8e8e2'; ag.fillRect(30,24,4,56); ag.fillRect(30,152,4,56);
+  // la calle ESTE va corrida +8m: da espacio a la plataforma ampliada del templo
   for(const sg of [-1,1]){
+    const off=sg>0?8:0;
     const t=new THREE.CanvasTexture(ac); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,9);
     const road=new THREE.Mesh(new THREE.PlaneGeometry(12,150),
       new THREE.MeshStandardMaterial({map:t,roughness:.95}));
-    road.rotation.x=-Math.PI/2; road.position.set(sg*53,0.012,5); road.receiveShadow=true; scene.add(road);
+    road.rotation.x=-Math.PI/2; road.position.set(sg*53+off,0.012,5); road.receiveShadow=true; scene.add(road);
     const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,150),M.concreto);
-    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7,0.02,5); anden.receiveShadow=true; scene.add(anden);
+    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7+off,0.02,5); anden.receiveShadow=true; scene.add(anden);
   }
 
   // Casas coloniales de teja al otro lado de las calles
@@ -653,7 +641,8 @@ function buildSitio(){
   }
   let ci=0;
   for(const sg of [-1,1]) for(let z=-42;z<=58;z+=25){
-    casa(sg*66, z, 10+(ci%3)*2, 12, 3.6+(ci%2)*0.9, ci%2?M.muroCrema:M.muroBlanco); ci++;
+    // las del este siguen a la calle corrida (+8)
+    casa(sg*66+(sg>0?8:0), z, 10+(ci%3)*2, 12, 3.6+(ci%2)*0.9, ci%2?M.muroCrema:M.muroBlanco); ci++;
   }
 
   // Palmeras reales repartidas por el parque (alturas variadas)
