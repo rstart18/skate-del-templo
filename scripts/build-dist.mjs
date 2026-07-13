@@ -15,7 +15,7 @@ const dirs = ['game'];
 const files = [
   'assets/models/53914247a877a402.glb',        // tabla SNAIKYY
   'assets/models/7423743c79d9034c.glb',        // estatua de Santander
-  'assets/models/255d623117535c9d.glb',        // templo hero (Tripo)
+  'assets/models/templo_multiview.glb',        // templo hero (Tripo multiview v2)
   'assets/models_final/skater.glb',            // skater riggeado (4 clips)
   'assets/models_optimized/7c695f3c94f30352_opt.glb', // banca colonial
   'assets/textures/deck_snaikyy.png',

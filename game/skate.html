@@ -249,10 +249,11 @@ function buildTemplo(){
   // El arco esta ENREJADO como el templo autentico: no se atraviesa. La entrada
   // a las ruinas es un tramo bajo del muro este (saltable, ver gap abajo).
   // pasajes ABIERTOS: machones de la torre y de las alas (arcos transitables)
-  walls.push({minX:-5.0,maxX:-2.6,minZ:tz+2.6,maxZ:tz+8.8,h:11});
-  walls.push({minX:2.6,maxX:5.0,minZ:tz+2.6,maxZ:tz+8.8,h:11});
-  walls.push({minX:8.4,maxX:12.5,minZ:tz+3.8,maxZ:tz+8.2,h:4.5});
-  walls.push({minX:-12.5,maxX:-8.4,minZ:tz+3.8,maxZ:tz+8.2,h:4.5});
+  // (footprint del modelo MULTIVIEW: bbox x -11..11, z tz-5.8..tz+5.8)
+  walls.push({minX:-5.2,maxX:-1.9,minZ:tz-4,maxZ:tz+4.5,h:11});
+  walls.push({minX:1.9,maxX:5.2,minZ:tz-4,maxZ:tz+4.5,h:11});
+  walls.push({minX:5.2,maxX:11,minZ:tz-3,maxZ:tz+2,h:4.5});
+  walls.push({minX:-11,maxX:-5.2,minZ:tz-3,maxZ:tz+2,h:4.5});
 
   // ESCOMBROS por la nave
   function escombros(x,z,n,seed){
@@ -1556,6 +1557,22 @@ function loadGameAssets(){
               root.position.y += (p.pos[1] - box.min.y);
             }
             if(id==='templo_historico'){
+              // realce de textura en runtime (el glb no admite reinyeccion in-place)
+              root.traverse(o=>{
+                if(o.isMesh&&o.material&&o.material.map){
+                  const t=o.material.map, im=t.image;
+                  if(im&&im.width){
+                    const c=document.createElement('canvas');c.width=im.width;c.height=im.height;
+                    const x=c.getContext('2d');
+                    x.filter='saturate(1.32) brightness(1.08) contrast(1.05)';
+                    x.drawImage(im,0,0);
+                    t.image=c;t.needsUpdate=true;
+                  }
+                }
+              });
+            }
+            const CARVE_TEMPLO=false; // el modelo multiview trae el arco ABIERTO: sin recorte
+            if(CARVE_TEMPLO&&id==='templo_historico'){
               // Recortar las REJAS horneadas y despejar los pasajes de los arcos:
               // se eliminan los triangulos cuyo centroide cae en el volumen del vano.
               const carve=[
