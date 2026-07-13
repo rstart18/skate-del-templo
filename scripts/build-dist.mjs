@@ -21,9 +21,6 @@ const files = [
   'assets/textures/deck_snaikyy.png',
   'assets/textures/tex_piedra_colonial.jpg',
   'assets/textures/tex_yeso_cupula.jpg',
-  'assets/textures/tex_ladrillo_real.jpg',
-  'assets/textures/tex_losa_atrio.jpg',
-  'assets/textures/tex_muro_ruina.jpg',
 ];
 
 for (const d of dirs) cpSync(join(root, d), join(dist, d), { recursive: true });
