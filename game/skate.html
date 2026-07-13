@@ -327,9 +327,9 @@ function buildTemplo(){
   const pedestalVerde=new THREE.MeshStandardMaterial({color:0x62796c,roughness:.7});
   {
     const p=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.7,1.5),pedestalVerde);
-    p.position.set(0,y0+0.85,tz-17.4);p.castShadow=true;p.receiveShadow=true;scene.add(p);
+    p.position.set(0,y0+0.85,tz-0.5);p.castShadow=true;p.receiveShadow=true;scene.add(p);
   }
-  walls.push({minX:-0.8,maxX:0.8,minZ:tz-18.2,maxZ:tz-16.6,h:2.9});
+  walls.push({minX:-0.8,maxX:0.8,minZ:tz-1.3,maxZ:tz+0.3,h:2.9});
 
   // --- PALMERAS REALES (firma del lugar: troncos altos grises) ---
   const palmaTronco=new THREE.MeshStandardMaterial({color:0xb9bdb4,roughness:.9});
@@ -1518,11 +1518,11 @@ const PLACEMENT = {
   // pos=[x,y,z] (y = altura del suelo donde se apoya la base), rot=[x,y,z] rad, scale.
   // El loader auto-aterriza cada modelo en pos.y (snapGround), así no hay que calcular el offset.
   banca_plaza: { pos:[3,0,26], rot:[0,Math.PI,0], scale:1.7 },
-  // sobre el pedestal verde, dentro del santuario al fondo de la nave (video real)
-  estatua_santander: { pos:[0,2.9,-63.4], rot:[0,-Math.PI/2,0], scale:2.2 },
+  // sobre el pedestal verde, DENTRO del templo (centro del pasaje del arco)
+  estatua_santander: { pos:[0,2.9,-46.5], rot:[0,-Math.PI/2,0], scale:2.2 },
   // Templo Historico (malla Tripo generada de la foto real). El arco enrejado
   // mira a la plaza (+z); la nave en ruinas procedural continua detras.
-  templo_historico: { pos:[0,1.2,-46.5], rot:[0,-Math.PI/2,0], scale:29 },
+  templo_historico: { pos:[0,1.2,-46.5], rot:[0,Math.PI/2,0], scale:29 }, // girado 180: la cara trasera da a la plaza
 };
 
 const _gltf = new THREE.GLTFLoader();
