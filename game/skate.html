@@ -192,49 +192,36 @@ const ramps=[]; // {type:'kicker'|'qp'|'stairs', ...}
 const walls=[]; // {minX,maxX,minZ,maxZ,h}
 const rails=[]; // {x1,z1,x2,z2,y}
 
-/* ---------- suelo: plaza de ladrillo + parque ---------- */
+/* ---------- suelo: plaza de ladrillo + parque ----------
+   Ambos planos llevan un AGUJERO rectangular donde va la PISCINA hundida
+   (x 24..44, z -41..-29): sin el hueco, el plano taparia el foso. */
+const POOL={minX:24,maxX:44,minZ:-41,maxZ:-29,depth:0.75};
+function planoConHueco(w,h,cx,cz,y,mat){
+  // plano XY rotado -90 en X: localY = cz - worldZ
+  const s=new THREE.Shape();
+  s.moveTo(-w/2,-h/2);s.lineTo(w/2,-h/2);s.lineTo(w/2,h/2);s.lineTo(-w/2,h/2);s.lineTo(-w/2,-h/2);
+  const p=new THREE.Path();
+  const x1=POOL.minX-cx,x2=POOL.maxX-cx,y1=cz-POOL.maxZ,y2=cz-POOL.minZ;
+  p.moveTo(x1,y1);p.lineTo(x2,y1);p.lineTo(x2,y2);p.lineTo(x1,y2);p.lineTo(x1,y1);
+  s.holes.push(p);
+  const m=new THREE.Mesh(new THREE.ShapeGeometry(s),mat);
+  m.rotation.x=-Math.PI/2;m.position.set(cx,y,cz);m.receiveShadow=true;scene.add(m);
+  return m;
+}
 {
-  const g=new THREE.Mesh(new THREE.PlaneGeometry(400,400),M.pasto);
-  g.rotation.x=-Math.PI/2;g.position.y=-0.02;g.receiveShadow=true;scene.add(g);
-  const plaza=new THREE.Mesh(new THREE.PlaneGeometry(90,120),M.ladrillo);
-  plaza.rotation.x=-Math.PI/2;plaza.position.set(0,0,10);plaza.receiveShadow=true;scene.add(plaza);
+  planoConHueco(400,400,0,0,-0.02,M.pasto);
+  // ShapeGeometry usa UVs en unidades del mundo: repeat por metro (misma densidad
+  // que el plano original: 14 rep / 90m y 18 rep / 120m)
+  const ladrilloPlano=new THREE.MeshStandardMaterial({map:tx('ladrillo',14/90,18/120),roughness:.95});
+  planoConHueco(90,120,0,10,0,ladrilloPlano);
 }
 
 /* ---------- EL TEMPLO (fondo norte, z negativo) ---------- */
 function buildTemplo(){
   const tz=-46;
-  // atrio elevado (piedra) con escaleras al frente — partido en 4 piezas
-  // alrededor de la PISCINA hundida (espejo de agua del lado derecho, foto real)
-  box(30,1.2,16,M.piedraRealPiso,-8,0.6,tz+11);
-  box(3,1.2,16,M.piedraRealPiso,21.5,0.6,tz+11);
-  box(13,1.2,2,M.piedraRealPiso,13.5,0.6,tz+4);
-  box(13,1.2,2,M.piedraRealPiso,13.5,0.6,tz+18);
-  walls.push({minX:-23,maxX:7,minZ:tz+3,maxZ:tz+19,h:1.2,walkTop:true});
-  walls.push({minX:20,maxX:23,minZ:tz+3,maxZ:tz+19,h:1.2,walkTop:true});
-  walls.push({minX:7,maxX:20,minZ:tz+3,maxZ:tz+5,h:1.2,walkTop:true});
-  walls.push({minX:7,maxX:20,minZ:tz+17,maxZ:tz+19,h:1.2,walkTop:true});
-
-  // PISCINA (75cm de hondo): 2 escalones al oeste, 3 al este, coping grindable
-  box(13,0.45,12,M.piedraRealPiso,13.5,0.225,tz+11);                 // fondo
-  walls.push({minX:8.6,maxX:18.4,minZ:tz+5,maxZ:tz+17,h:0.45,walkTop:true});
-  box(0.8,0.95,12,M.piedraRealPiso,7.4,0.475,tz+11);                 // oeste: 2 escalones
-  box(0.8,0.7,12,M.piedraRealPiso,8.2,0.35,tz+11);
-  walls.push({minX:7,maxX:7.8,minZ:tz+5,maxZ:tz+17,h:0.95,walkTop:true});
-  walls.push({minX:7.8,maxX:8.6,minZ:tz+5,maxZ:tz+17,h:0.7,walkTop:true});
-  box(0.54,1.01,12,M.piedraRealPiso,19.73,0.505,tz+11);              // este: 3 escalones
-  box(0.54,0.83,12,M.piedraRealPiso,19.2,0.415,tz+11);
-  box(0.54,0.64,12,M.piedraRealPiso,18.66,0.32,tz+11);
-  walls.push({minX:19.46,maxX:20,minZ:tz+5,maxZ:tz+17,h:1.01,walkTop:true});
-  walls.push({minX:18.93,maxX:19.46,minZ:tz+5,maxZ:tz+17,h:0.83,walkTop:true});
-  walls.push({minX:18.4,maxX:18.93,minZ:tz+5,maxZ:tz+17,h:0.64,walkTop:true});
-  // franjas oscuras de drenaje en el borde (detalle de la foto) + coping grindable
-  const drenaje=new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:.6});
-  for(const dz of [tz+4.85,tz+17.15]){
-    const f=new THREE.Mesh(new THREE.BoxGeometry(13,0.05,0.3),drenaje);
-    f.position.set(13.5,1.22,dz);f.receiveShadow=true;scene.add(f);
-  }
-  rails.push({x1:7,z1:tz+5,x2:20,z2:tz+5,y:1.2});
-  rails.push({x1:7,z1:tz+17,x2:20,z2:tz+17,y:1.2});
+  // atrio elevado (piedra) con escaleras al frente
+  box(46,1.2,16,M.piedraRealPiso,0,0.6,tz+11);
+  walls.push({minX:-23,maxX:23,minZ:tz+3,maxZ:tz+19,h:1.2,walkTop:true});
   const steps=4,stepH=1.2/steps,stepD=1.1;
   for(let i=0;i<steps;i++){
     box(20,stepH,stepD,M.piedra,0,stepH*i+stepH/2,tz+19+(steps-i-0.5)*stepD);
@@ -527,7 +514,8 @@ farol(-34,0);farol(34,0);farol(-34,46);farol(34,46);farol(-12,64);farol(12,64);
    ALTURA DEL SUELO
    ============================================================ */
 function groundHeight(x,z){
-  let h=0;
+  // FOSOS: dentro de la piscina el piso base queda BAJO el nivel de la plaza
+  let h=(x>=POOL.minX&&x<=POOL.maxX&&z>=POOL.minZ&&z<=POOL.maxZ)?-POOL.depth:0;
   // escaleras del atrio
   for(const r of ramps){
     if(r.type==='stairs'){
@@ -599,8 +587,47 @@ function buildSitio(){
     walls.push({minX:Math.min(x1,x2)-.25,maxX:Math.max(x1,x2)+.25,minZ:Math.min(z1,z2)-.25,maxZ:Math.max(z1,z2)+.25,h:1.35});
   }
   // perimetro con vanos: los quarter pipes ocupan x=+-45 en z~3..37
-  for(const sg of [-1,1]){ cerca(sg*44,-55,sg*44,0); cerca(sg*44,40,sg*44,68); }
+  cerca(-44,-55,-44,0); cerca(-44,40,-44,68);
+  // la cerca este se ABRE en el tramo de la piscina (z -42..-28)
+  cerca(44,-55,44,-42); cerca(44,-28,44,0); cerca(44,40,44,68);
   cerca(-44,70,-6,70); cerca(6,70,44,70);   // sur con entrada central
+
+  /* ---------- PISCINA hundida (area marcada por el usuario: del atrio a la calle) ---------- */
+  {
+    const P=POOL, cx=(P.minX+P.maxX)/2, czp=(P.minZ+P.maxZ)/2, L=P.maxX-P.minX, A=P.maxZ-P.minZ;
+    // fondo y paredes interiores del foso
+    box(L,0.06,A,M.piedraRealPiso,cx,-P.depth-0.03,czp);
+    const pared=new THREE.MeshStandardMaterial({map:tx('concreto',2,0.5),roughness:.9});
+    box(L,P.depth,0.12,pared,cx,-P.depth/2,P.minZ+0.06);
+    box(L,P.depth,0.12,pared,cx,-P.depth/2,P.maxZ-0.06);
+    box(0.12,P.depth,A,pared,P.minX+0.06,-P.depth/2,czp);
+    box(0.12,P.depth,A,pared,P.maxX-0.06,-P.depth/2,czp);
+    // escalones: 2 al OESTE (lado atrio), 3 al ESTE (lado calle) — ancho completo
+    box(0.8,0.5,A,M.piedraRealPiso,P.minX+0.4,-0.5,czp);
+    box(0.8,0.25,A,M.piedraRealPiso,P.minX+1.2,-0.625,czp);
+    walls.push({minX:P.minX,maxX:P.minX+0.8,minZ:P.minZ,maxZ:P.maxZ,h:-0.25,walkTop:true});
+    walls.push({minX:P.minX+0.8,maxX:P.minX+1.6,minZ:P.minZ,maxZ:P.maxZ,h:-0.5,walkTop:true});
+    box(0.54,0.56,A,M.piedraRealPiso,P.maxX-0.27,-0.47,czp);
+    box(0.54,0.375,A,M.piedraRealPiso,P.maxX-0.8,-0.56,czp);
+    box(0.54,0.19,A,M.piedraRealPiso,P.maxX-1.33,-0.655,czp);
+    walls.push({minX:P.maxX-0.54,maxX:P.maxX,minZ:P.minZ,maxZ:P.maxZ,h:-0.19,walkTop:true});
+    walls.push({minX:P.maxX-1.07,maxX:P.maxX-0.54,minZ:P.minZ,maxZ:P.maxZ,h:-0.375,walkTop:true});
+    walls.push({minX:P.maxX-1.6,maxX:P.maxX-1.07,minZ:P.minZ,maxZ:P.maxZ,h:-0.56,walkTop:true});
+    // bordes largos: pared fina que bloquea SOLO desde adentro (h=0) — desde la
+    // plaza pasas por encima y caes; el drop-in queda natural
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.minZ-0.15,maxZ:P.minZ+0.15,h:0});
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.maxZ-0.15,maxZ:P.maxZ+0.15,h:0});
+    // franjas de drenaje + coping grindable en los rims largos
+    const dren=new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:.6});
+    for(const dz of [P.minZ+0.18,P.maxZ-0.18]){
+      const f=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.3),dren);
+      f.position.set(cx,0.02,dz);f.receiveShadow=true;scene.add(f);
+    }
+    // coping 10cm AFUERA del borde: el drop-in cae limpio (no cruza el riel en
+    // el aire), pero un ollie al rim si lo engancha
+    rails.push({x1:P.minX,z1:P.minZ-0.1,x2:P.maxX,z2:P.minZ-0.1,y:0});
+    rails.push({x1:P.minX,z1:P.maxZ+0.1,x2:P.maxX,z2:P.maxZ+0.1,y:0});
+  }
 
   // Calles a ambos costados (Ruta 70 al este) con linea central discontinua
   const ac=document.createElement('canvas'); ac.width=64; ac.height=256;
@@ -945,7 +972,7 @@ addEventListener('keydown',e=>{
   // truco DESDE un grind/boardslide: hop automatico del riel; si caes de nuevo
   // sobre el tubo re-enganchas (50-50 o boardslide con A/D) y el combo sigue
   if(S.grinding&&!S.trick&&S.bailT<=0&&!e.repeat&&(k==='j'||k==='k'||k==='l'||k==='h')){
-    S.grinding=null;S.grounded=false;S.vy=7.2;S.railCd=0;
+    S.grinding=null;S.grounded=false;S.vy=7.2;S.railCd=0;S.airFrom='jump';
     S.speed=Math.min(S.speed,4.5); // el hop frena: sin esto vuelas mas alla del tubo
     S.railHop=true;                // los trucos del hop giran mas rapido (ver abajo)
     const ja=skaterActions['jumping'];
@@ -1172,12 +1199,12 @@ function step(dt){
     g.t+=g.dir*(g.speed/len)*dt;
     S.comboPts+=120*dt; // puntos por grindear
     if(jump&&!S.jHeld){ // saltar del riel
-      S.grinding=null;S.vy=6.5;S.grounded=false;S.railCd=0.35;
+      S.grinding=null;S.vy=6.5;S.grounded=false;S.railCd=0.35;S.airFrom='jump';
       addTrick('Salto de grind',50);
     }else if(g.t<0||g.t>1){
       // cooldown: sin el, al salir por el extremo caia y RE-enganchaba el
       // mismo riel como 50-50 fantasma (bug de piernas al bajar del boardslide)
-      S.grinding=null;S.grounded=false;S.vy=Math.max(S.vy,1.5);S.railCd=0.35;
+      S.grinding=null;S.grounded=false;S.vy=Math.max(S.vy,1.5);S.railCd=0.35;S.airFrom='jump';
     }else{
       S.x=r.x1+dx*g.t;S.z=r.z1+dz*g.t;S.y=r.y+0.05;
       S.heading=Math.atan2(dx*g.dir,dz*g.dir);
@@ -1213,6 +1240,7 @@ function step(dt){
       if(jump){S.charging=true;S.charge=Math.min(1,S.charge+dt*2.2);}
       else if(S.charging){
         S.vy=6+S.charge*4+S.speed*0.12;
+        S.airFrom='jump';
         S.grounded=false;S.charging=false;S.charge=0;
         S.spinAccum=0;S.airTrickPts=0;
         addTrick(S.stance<0?'Switch Ollie':'Ollie',S.stance<0?30:20);
@@ -1237,7 +1265,9 @@ function step(dt){
     const gh=groundHeight(S.x,S.z);
     if(S.grounded){
       if(gh<S.y-0.45){
-        // se acabó la rampa / borde → aire
+        // se acabó la rampa / borde → aire (drop: NO engancha rieles — los
+        // grinds requieren saltar; evita auto-grind al caer a la piscina)
+        S.airFrom='drop';
         S.grounded=false;
         S.vy=Math.max(0,(S.y-S.prevGroundY)/Math.max(dt,1e-4))*0.55;
         S.vy=Math.min(S.vy,13);
@@ -1253,7 +1283,7 @@ function step(dt){
 
       // intentar grind al caer
       S.railCd=Math.max(0,S.railCd-dt);
-      if(S.vy<0&&canControl&&S.railCd<=0){
+      if(S.vy<0&&canControl&&S.railCd<=0&&S.airFrom!=='drop'){
         const hit=nearestRail(S.x,S.z,S.y);
         if(hit){
           if(S.trick&&S.trickT<0.7){doBail();}    // truco a medias sobre el riel = bail
