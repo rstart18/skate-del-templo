@@ -168,13 +168,15 @@ function realTex(url,rx,ry){
   t.repeat.set(rx,ry); t.anisotropy=_aniso; return t;
 }
 Object.assign(M,{
-  piedraReal:    new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_piedra_colonial.jpg',2,1.5),roughness:.95}),
-  piedraRealX:   new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_piedra_colonial.jpg',0.18,0.18),roughness:.95}), // ExtrudeGeometry: UVs en unidades del mundo
-  piedraRealPiso:new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_piedra_colonial.jpg',6,4),roughness:.95}),
+  // texturas extraidas de las FOTOS REALES del templo (C:\Users\MSI\Pictures\Templo)
+  piedraReal:    new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_muro_ruina.jpg',2,1.5),roughness:.95}),
+  piedraRealX:   new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_muro_ruina.jpg',0.18,0.18),roughness:.95}), // ExtrudeGeometry: UVs en unidades del mundo
+  piedraRealPiso:new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_losa_atrio.jpg',12,4),roughness:.95}), // el atrio real son LOSAS, no ladrillo
+  ladrilloNave:  new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_ladrillo_real.jpg',10,15),roughness:.95}),
   yesoReal:      new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_yeso_cupula.jpg',2,1),roughness:.85}),
 });
-// tono pardo de la piedra real (la textura sola quedaba muy amarilla)
-M.piedraReal.color.set(0xd6c2a2); M.piedraRealX.color.set(0xd6c2a2); M.piedraRealPiso.color.set(0xe2d3b6);
+// la plaza tambien usa el ladrillo espina de pescado REAL
+M.ladrillo.map=realTex('../assets/textures/tex_ladrillo_real.jpg',52,70);
 
 function box(w,h,d,mat,x,y,z,ry=0){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
@@ -231,9 +233,18 @@ function buildTemplo(){
   // --- plataforma de la nave (continúa el atrio hacia atrás) ---
   box(26,1.2,26,M.piedraRealPiso,0,0.6,tz-9);
   walls.push({minX:-13,maxX:13,minZ:tz-22,maxZ:tz+4,h:1.2,walkTop:true});
-  const naveFloor=new THREE.Mesh(new THREE.PlaneGeometry(16.6,25),M.ladrillo);
+  const naveFloor=new THREE.Mesh(new THREE.PlaneGeometry(16.6,25),M.ladrilloNave);
   naveFloor.rotation.x=-Math.PI/2;naveFloor.position.set(0,y0+0.02,tz-8.5);
   naveFloor.receiveShadow=true;scene.add(naveFloor);
+
+  // TOCONES de columnas de la nave (foto real 8): dos filas de bases de piedra.
+  // Son obstaculos saltables (walkTop) — le dan vida y lineas al spot.
+  for(const [sx,sz,sh] of [[-4.2,-4,1.05],[-4.2,-7.5,0.8],[-4.2,-11,1.15],[-4.2,-14.5,0.75],[-4.2,-18,1.0],
+                           [4.2,-4,0.85],[4.2,-7.5,1.1],[4.2,-11,0.7],[4.2,-14.5,1.05],[4.2,-18,0.9]]){
+    const st=new THREE.Mesh(new THREE.CylinderGeometry(0.48,0.58,sh,10),M.piedraReal);
+    st.position.set(sx,y0+sh/2,tz+sz);st.castShadow=true;st.receiveShadow=true;scene.add(st);
+    walls.push({minX:sx-0.55,maxX:sx+0.55,minZ:tz+sz-0.55,maxZ:tz+sz+0.55,h:y0+sh,walkTop:true});
+  }
 
   // --- TEMPLO HERO (malla Tripo, ver PLACEMENT 'templo_historico') ---
   // La torre procedural fue reemplazada por el modelo 3D generado de la foto real.
