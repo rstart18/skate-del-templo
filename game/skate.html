@@ -176,6 +176,17 @@ Object.assign(M,{
 // tono pardo de la piedra real (la textura sola quedaba muy amarilla)
 M.piedraReal.color.set(0xd6c2a2); M.piedraRealX.color.set(0xd6c2a2); M.piedraRealPiso.color.set(0xe2d3b6);
 
+// Piso del templo: baldosa del MISMO tamaño real en cualquier losa nueva
+// (el atrio usa repeat 6x4 sobre 46x16 -> baldosa de 46/6 x 16/4 metros).
+// Sin esto, cada box() con su propio ancho estira la textura distinto y el
+// patron "se rompe" entre piezas — pisoMat(w,d) mantiene la baldosa igual.
+const TILE_X=46/6, TILE_Z=16/4;
+function pisoMat(w,d){
+  const m=new THREE.MeshStandardMaterial({map:realTex('../assets/textures/tex_piedra_colonial.jpg',
+    Math.max(0.3,w/TILE_X), Math.max(0.3,d/TILE_Z)), roughness:.95});
+  m.color.set(0xe2d3b6); return m;
+}
+
 function box(w,h,d,mat,x,y,z,ry=0){
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
   m.position.set(x,y,z);m.rotation.y=ry;m.castShadow=true;m.receiveShadow=true;
@@ -575,27 +586,47 @@ function buildSitio(){
   cerca(52,-55,52,0); cerca(52,40,52,68);
   cerca(-44,70,-6,70); cerca(6,70,44,70);   // sur con entrada central
 
-  /* ---------- PLATAFORMA AMPLIADA + COLONNADE (fiel a la foto real) ----------
-     La foto real muestra el atrio frente a la torre como una explanada PLANA
-     de piso a cuadros, flanqueada por DOS HILERAS de tocones de columna y con
-     PILAS DE PIEDRA en las esquinas — NO hay piscina/desnivel en ese punto. */
+  /* ---------- PLATAFORMA AMPLIADA + PISCINA (queda en su sitio, lado este) ----------
+     La piscina se conserva como feature de skate (decision del usuario por
+     encima de la fidelidad estricta a la foto). Todo el piso nuevo usa
+     pisoMat(w,d) para que la baldosa se vea del MISMO tamaño que el atrio
+     del templo — antes cada box() estiraba su propia textura distinto. */
   {
     const PX1=23,PX2=48,PZ1=-56,PZ2=-27,H=1.2;          // plataforma (hasta los bloques marrones)
-    box(PX2-PX1,H,PZ2-PZ1,M.piedraRealPiso,(PX1+PX2)/2,H/2,(PZ1+PZ2)/2);
-    walls.push({minX:PX1,maxX:PX2,minZ:PZ1,maxZ:PZ2,h:H,walkTop:true});
-
-    // colonnade: 2 hileras de tocones flanqueando el camino central (x=35.5)
-    const cxAxis=35.5, colL=PZ1+4, colR=PZ2-4, n=6;
-    for(let i=0;i<n;i++){
-      const zc=colL+(colR-colL)*i/(n-1);
-      for(const dx of [-5.5,5.5]){
-        const sh=0.7+((i+ (dx>0?1:0))%3)*0.18;
-        const st=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.5,sh,10),M.piedraReal);
-        st.position.set(cxAxis+dx,H+sh/2,zc);st.castShadow=true;st.receiveShadow=true;scene.add(st);
-        walls.push({minX:cxAxis+dx-0.48,maxX:cxAxis+dx+0.48,minZ:zc-0.48,maxZ:zc+0.48,h:H+sh,walkTop:true});
-      }
+    const P={minX:26,maxX:45,minZ:-53,maxZ:-30};        // piscina (fondo a 0.45)
+    const F=0.45;
+    // plataforma: 4 piezas alrededor de la piscina
+    box(P.minX-PX1,H,PZ2-PZ1,pisoMat(P.minX-PX1,PZ2-PZ1),(PX1+P.minX)/2,H/2,(PZ1+PZ2)/2);
+    box(PX2-P.maxX,H,PZ2-PZ1,pisoMat(PX2-P.maxX,PZ2-PZ1),(P.maxX+PX2)/2,H/2,(PZ1+PZ2)/2);
+    box(P.maxX-P.minX,H,P.minZ-PZ1,pisoMat(P.maxX-P.minX,P.minZ-PZ1),(P.minX+P.maxX)/2,H/2,(PZ1+P.minZ)/2);
+    box(P.maxX-P.minX,H,PZ2-P.maxZ,pisoMat(P.maxX-P.minX,PZ2-P.maxZ),(P.minX+P.maxX)/2,H/2,(P.maxZ+PZ2)/2);
+    walls.push({minX:PX1,maxX:P.minX,minZ:PZ1,maxZ:PZ2,h:H,walkTop:true});
+    walls.push({minX:P.maxX,maxX:PX2,minZ:PZ1,maxZ:PZ2,h:H,walkTop:true});
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:PZ1,maxZ:P.minZ,h:H,walkTop:true});
+    walls.push({minX:P.minX,maxX:P.maxX,minZ:P.maxZ,maxZ:PZ2,h:H,walkTop:true});
+    // piscina: fondo + escalones (2 oeste, 3 este) a lo ancho completo
+    const cx=(P.minX+P.maxX)/2, czp=(P.minZ+P.maxZ)/2, A=P.maxZ-P.minZ;
+    box(P.maxX-P.minX,F,A,pisoMat(P.maxX-P.minX,A),cx,F/2,czp);
+    walls.push({minX:P.minX+1.6,maxX:P.maxX-1.6,minZ:P.minZ,maxZ:P.maxZ,h:F,walkTop:true});
+    box(0.8,0.95,A,pisoMat(0.8,A),P.minX+0.4,0.475,czp);
+    box(0.8,0.7,A,pisoMat(0.8,A),P.minX+1.2,0.35,czp);
+    walls.push({minX:P.minX,maxX:P.minX+0.8,minZ:P.minZ,maxZ:P.maxZ,h:0.95,walkTop:true});
+    walls.push({minX:P.minX+0.8,maxX:P.minX+1.6,minZ:P.minZ,maxZ:P.maxZ,h:0.7,walkTop:true});
+    box(0.54,1.01,A,pisoMat(0.54,A),P.maxX-0.27,0.505,czp);
+    box(0.54,0.83,A,pisoMat(0.54,A),P.maxX-0.8,0.415,czp);
+    box(0.54,0.64,A,pisoMat(0.54,A),P.maxX-1.33,0.32,czp);
+    walls.push({minX:P.maxX-0.54,maxX:P.maxX,minZ:P.minZ,maxZ:P.maxZ,h:1.01,walkTop:true});
+    walls.push({minX:P.maxX-1.07,maxX:P.maxX-0.54,minZ:P.minZ,maxZ:P.maxZ,h:0.83,walkTop:true});
+    walls.push({minX:P.maxX-1.6,maxX:P.maxX-1.07,minZ:P.minZ,maxZ:P.maxZ,h:0.64,walkTop:true});
+    // drenajes oscuros + coping grindable (10cm afuera: el drop-in no engancha)
+    const dren=new THREE.MeshStandardMaterial({color:0x2e2e30,roughness:.6});
+    for(const dz of [P.minZ+0.18,P.maxZ-0.18]){
+      const f=new THREE.Mesh(new THREE.BoxGeometry(P.maxX-P.minX,0.04,0.3),dren);
+      f.position.set(cx,H+0.02,dz);f.receiveShadow=true;scene.add(f);
     }
-    // pilas de piedra (fuentes bautismales) en las 4 esquinas de la explanada
+    rails.push({x1:P.minX,z1:P.minZ-0.1,x2:P.maxX,z2:P.minZ-0.1,y:H});
+    rails.push({x1:P.minX,z1:P.maxZ+0.1,x2:P.maxX,z2:P.maxZ+0.1,y:H});
+    // pilas de piedra (foto real) en las 4 esquinas exteriores, fuera del foso
     const pilaMat=new THREE.MeshStandardMaterial({color:0x8f8677,roughness:.9});
     function pila(x,z){
       const base=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,0.55,10),pilaMat);
