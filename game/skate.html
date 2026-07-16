@@ -579,8 +579,8 @@ function buildSitio(){
      El piso del templo (1.2m) se extiende hacia el este hasta cerca de la
      calle corrida, y la piscina va hundida DENTRO de esa plataforma. */
   {
-    const PX1=23,PX2=48,PZ1=-43,PZ2=-27,H=1.2;          // plataforma
-    const P={minX:26,maxX:45,minZ:-40,maxZ:-30};        // piscina (fondo a 0.45)
+    const PX1=23,PX2=48,PZ1=-56,PZ2=-27,H=1.2;          // plataforma (hasta los bloques marrones)
+    const P={minX:26,maxX:45,minZ:-53,maxZ:-30};        // piscina 19x23 (fondo a 0.45)
     const F=0.45;                                        // altura del fondo
     // plataforma: 4 piezas alrededor de la piscina
     box(P.minX-PX1,H,PZ2-PZ1,M.piedraRealPiso,(PX1+P.minX)/2,H/2,(PZ1+PZ2)/2);
@@ -660,7 +660,7 @@ function buildSitio(){
       scene.add(fr);
     }
   }
-  [[-40,-42,11],[40,-46,9],[-40,58,10],[40,60,12],[-38,4,8.5],[38,44,9.5],[-20,64,10],[20,64,8.5]]
+  [[-40,-42,11],[40,-60,9],[-40,58,10],[40,60,12],[-38,4,8.5],[38,44,9.5],[-20,64,10],[20,64,8.5]]
     .forEach(q=>palma2(q[0],q[1],q[2]));
   // Tamarindos frondosos asomando sobre la reja (Street View)
   arbol(-40,36,1.6,true); arbol(40,-2,1.5,true);
