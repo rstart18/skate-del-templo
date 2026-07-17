@@ -239,7 +239,14 @@ function buildTemplo(){
      y la escalera; el piso de piedra del templo se extiende PLANO desde
      la torre hasta bien atras del spawn del jugador (pedido del usuario). */
   const FRONT_Z1=tz+3, FRONT_Z2=38;   // del borde del templo hasta pasar el spawn (z=34)
-  box(46,0.06,FRONT_Z2-FRONT_Z1,pisoMat(46,FRONT_Z2-FRONT_Z1),0,0.03,(FRONT_Z1+FRONT_Z2)/2);
+  // La losa se parte en 2 piezas EVITANDO el rectangulo del foso de la piscina
+  // (x 10.4..27, z -53..-30): una sola caja taparia el hueco con su textura.
+  {
+    const wA=POOL.minX-(-23), dA=FRONT_Z2-FRONT_Z1;             // oeste del foso: completa
+    box(wA,0.06,dA,pisoMat(wA,dA),(-23+POOL.minX)/2,0.03,(FRONT_Z1+FRONT_Z2)/2);
+    const wB=23-POOL.minX, dB=FRONT_Z2-POOL.maxZ;               // este: solo al sur del foso
+    box(wB,0.06,dB,pisoMat(wB,dB),(POOL.minX+23)/2,0.03,(POOL.maxZ+FRONT_Z2)/2);
+  }
 
   // COLONNADE del frente (foto real): dos hileras de columnas/vigas en ruinas
   // flanqueando el camino central hacia el arco, con pilas de piedra al fondo.
@@ -272,7 +279,13 @@ function buildTemplo(){
   const y0=0;                            // el templo ya no tiene atrio elevado
 
   // --- piso de la nave (satelite: la nave real mide ~45m de fondo) ---
-  box(26,0.06,44,pisoMat(26,44),0,0.03,tz-18);
+  // partido en 2 para no invadir la esquina noroeste del foso de la piscina
+  {
+    const wA=POOL.minX-(-13), dA=44;                            // oeste del foso: completa
+    box(wA,0.06,dA,pisoMat(wA,dA),(-13+POOL.minX)/2,0.03,tz-18);
+    const wB=13-POOL.minX, dB=POOL.minZ-(tz-40);                // este: solo al norte del foso
+    box(wB,0.06,dB,pisoMat(wB,dB),(POOL.minX+13)/2,0.03,(tz-40+POOL.minZ)/2);
+  }
   const naveFloor=new THREE.Mesh(new THREE.PlaneGeometry(16.6,42),M.ladrillo);
   naveFloor.rotation.x=-Math.PI/2;naveFloor.position.set(0,y0+0.02,tz-17);
   naveFloor.receiveShadow=true;scene.add(naveFloor);
