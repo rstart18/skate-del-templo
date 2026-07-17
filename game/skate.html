@@ -203,12 +203,19 @@ const ramps=[]; // {type:'kicker'|'qp'|'stairs', ...}
 const walls=[]; // {minX,maxX,minZ,maxZ,h}
 const rails=[]; // {x1,z1,x2,z2,y}
 
-/* ---------- suelo: plaza de ladrillo + parque ---------- */
+/* ---------- suelo: explanada de arena + parque (satelite real) ----------
+   El satelite muestra: explanada de tierra/arena alrededor y al oeste del
+   templo, y al sur PARQUE verde — no una plaza de ladrillo gigante. */
 {
   const g=new THREE.Mesh(new THREE.PlaneGeometry(400,400),M.pasto);
   g.rotation.x=-Math.PI/2;g.position.y=-0.02;g.receiveShadow=true;scene.add(g);
-  const plaza=new THREE.Mesh(new THREE.PlaneGeometry(90,120),M.ladrillo);
-  plaza.rotation.x=-Math.PI/2;plaza.position.set(0,0,10);plaza.receiveShadow=true;scene.add(plaza);
+  const arenaMat=new THREE.MeshStandardMaterial({color:0xcdbb92,roughness:1});
+  const arena=new THREE.Mesh(new THREE.PlaneGeometry(90,72),arenaMat);
+  arena.rotation.x=-Math.PI/2;arena.position.set(0,0,-20);arena.receiveShadow=true;scene.add(arena);
+  // sendero de ladrillo por el parque hacia el monumento (los obstaculos de
+  // skate del sur viven sobre el pasto/sendero, como mobiliario del parque)
+  const senda=new THREE.Mesh(new THREE.PlaneGeometry(6,52),M.ladrillo);
+  senda.rotation.x=-Math.PI/2;senda.position.set(0,0.005,42);senda.receiveShadow=true;scene.add(senda);
 }
 
 /* ---------- EL TEMPLO (fondo norte, z negativo) ---------- */
@@ -251,16 +258,18 @@ function buildTemplo(){
      El arco central es un pasaje abovedado: se puede patinar a través. */
   const y0=0;                            // el templo ya no tiene atrio elevado
 
-  // --- piso de la nave (continua el piso del frente, MISMO nivel — sin acantilado) ---
-  box(26,0.06,26,pisoMat(26,26),0,0.03,tz-9);
-  const naveFloor=new THREE.Mesh(new THREE.PlaneGeometry(16.6,25),M.ladrillo);
-  naveFloor.rotation.x=-Math.PI/2;naveFloor.position.set(0,y0+0.02,tz-8.5);
+  // --- piso de la nave (satelite: la nave real mide ~45m de fondo) ---
+  box(26,0.06,44,pisoMat(26,44),0,0.03,tz-18);
+  const naveFloor=new THREE.Mesh(new THREE.PlaneGeometry(16.6,42),M.ladrillo);
+  naveFloor.rotation.x=-Math.PI/2;naveFloor.position.set(0,y0+0.02,tz-17);
   naveFloor.receiveShadow=true;scene.add(naveFloor);
 
-  // TOCONES de columnas de la nave (foto real 8): dos filas de bases de piedra.
-  // Son obstaculos saltables (walkTop) — le dan vida y lineas al spot.
+  // TOCONES de columnas de la nave (foto real 8): dos filas de bases de piedra
+  // a lo largo de los 45m reales. Obstaculos saltables (walkTop).
   for(const [sx,sz,sh] of [[-4.2,-4,1.05],[-4.2,-7.5,0.8],[-4.2,-11,1.15],[-4.2,-14.5,0.75],[-4.2,-18,1.0],
-                           [4.2,-4,0.85],[4.2,-7.5,1.1],[4.2,-11,0.7],[4.2,-14.5,1.05],[4.2,-18,0.9]]){
+                           [4.2,-4,0.85],[4.2,-7.5,1.1],[4.2,-11,0.7],[4.2,-14.5,1.05],[4.2,-18,0.9],
+                           [-4.2,-22,0.9],[-4.2,-26,1.1],[-4.2,-30,0.75],[-4.2,-34,1.0],
+                           [4.2,-22,1.05],[4.2,-26,0.8],[4.2,-30,1.15],[4.2,-34,0.85]]){
     const st=new THREE.Mesh(new THREE.CylinderGeometry(0.48,0.58,sh,10),M.piedraReal);
     st.position.set(sx,y0+sh/2,tz+sz);st.castShadow=true;st.receiveShadow=true;scene.add(st);
     walls.push({minX:sx-0.55,maxX:sx+0.55,minZ:tz+sz-0.55,maxZ:tz+sz+0.55,h:y0+sh,walkTop:true});
@@ -287,34 +296,35 @@ function buildTemplo(){
   }
   escombros(-6,tz-4,4,1); escombros(7,tz-12,3,2); escombros(-7.5,tz-17,4,3);
   escombros(3,tz-19,3,4); escombros(8.5,tz+0.5,3,5);
+  escombros(-5,tz-26,4,6); escombros(6,tz-31,3,7); escombros(-7,tz-36,3,8);
 
   // --- muros de la NAVE EN RUINAS (alturas irregulares, cielo abierto) ---
   const jag=[1.7,0.9,2.1,0.7,1.4,1.0,1.9,0.8];
   for(const sgn of [-1,1]){
-    for(let i=0;i<8;i++){
-      let h=jag[i]; if(sgn===1&&i===3) h=0.55;   // brecha de entrada (este)
+    for(let i=0;i<14;i++){                     // 14 segmentos ~ los 40m reales
+      let h=jag[i%8]; if(sgn===1&&i===3) h=0.55;   // brecha de entrada (este)
       const zc=tz+1.5-(i+0.5)*2.9;
       box(1,h,2.8,M.piedraReal,sgn*8.9,y0+h/2,zc);
       if(i%3===1) box(1.4,1.6,1.2,M.piedraReal,sgn*10,y0+0.8,zc);  // contrafuerte derruido
     }
     if(sgn===1){   // muro ESTE: con brecha baja saltable (entrada a las ruinas)
-      walls.push({minX:8.4,maxX:9.4,minZ:tz-21.7,maxZ:tz-10.2,h:2.2});
+      walls.push({minX:8.4,maxX:9.4,minZ:tz-41.7,maxZ:tz-10.2,h:2.2});
       walls.push({minX:8.4,maxX:9.4,minZ:tz-10.1,maxZ:tz-7.2,h:0.7,walkTop:true});
       walls.push({minX:8.4,maxX:9.4,minZ:tz-7.1,maxZ:tz+3.2,h:2.2});
     }else{
-      walls.push({minX:-9.4,maxX:-8.4,minZ:tz-21.7,maxZ:tz+3.2,h:2.2});
+      walls.push({minX:-9.4,maxX:-8.4,minZ:tz-41.7,maxZ:tz+3.2,h:2.2});
     }
   }
   for(let i=0;i<6;i++){                                  // muro trasero derruido
     const h=jag[(i+3)%8],xc=-7.5+i*3;
-    box(2.9,h,1,M.piedraReal,xc,y0+h/2,tz-21.2);
+    box(2.9,h,1,M.piedraReal,xc,y0+h/2,tz-42.2);
   }
-  walls.push({minX:-9.4,maxX:9.4,minZ:tz-21.7,maxZ:tz-20.7,h:3.4});
+  walls.push({minX:-9.4,maxX:9.4,minZ:tz-42.7,maxZ:tz-41.7,h:3.4});
 
   // --- SANTUARIO DE SANTANDER (del video real): muro monumental de ladrillo
   //     con 3 arcos al fondo de la nave; la estatua vive DENTRO, como en el sitio.
   {
-    const sw=15, sh=7.5, sd=1.1, szv=tz-19.5;
+    const sw=15, sh=7.5, sd=1.1, szv=tz-40.5;  // al fondo de la nave de 45m (satelite)
     const ladrilloX=new THREE.MeshStandardMaterial({map:tx('ladrillo',0.6,0.6),color:0xa06a52,roughness:.95});
     const shape=new THREE.Shape();
     shape.moveTo(-sw/2,0);shape.lineTo(-sw/2,sh);shape.lineTo(sw/2,sh);shape.lineTo(sw/2,0);shape.lineTo(-sw/2,0);
@@ -507,14 +517,14 @@ farol(-34,0);farol(34,0);farol(-34,46);farol(34,46);farol(-12,64);farol(12,64);
 
 /* ---------- muro perimetral bajo (límite jugable) ---------- */
 {
-  const B=68;
-  for(const s of [[-B,-58,B,-58],[-B,74,B,74],[-B,-58,-B,74],[B,-58,B,74]]){
+  const B=68, N=-92;   // limite norte expandido: la nave real de 45m + santuario
+  for(const s of [[-B,N,B,N],[-B,74,B,74],[-B,N,-B,74],[B,N,B,74]]){
     walls.push({minX:Math.min(s[0],s[2])-1,maxX:Math.max(s[0],s[2])+1,
                 minZ:Math.min(s[1],s[3])-1,maxZ:Math.max(s[1],s[3])+1,h:2});
   }
   // representación visual
-  box(2*B,1.6,1.2,M.ladrilloOsc,0,.8,-58);box(2*B,1.6,1.2,M.ladrilloOsc,0,.8,74);
-  box(1.2,1.6,132,M.ladrilloOsc,-B,.8,8);box(1.2,1.6,132,M.ladrilloOsc,B,.8,8);
+  box(2*B,1.6,1.2,M.ladrilloOsc,0,.8,N);box(2*B,1.6,1.2,M.ladrilloOsc,0,.8,74);
+  box(1.2,1.6,74-N,M.ladrilloOsc,-B,.8,(74+N)/2);box(1.2,1.6,74-N,M.ladrilloOsc,B,.8,(74+N)/2);
 }
 
 /* ============================================================
@@ -594,8 +604,9 @@ function buildSitio(){
   }
   // perimetro con vanos: los quarter pipes ocupan x=+-45 en z~3..37
   cerca(-44,-55,-44,0); cerca(-44,40,-44,68);
-  // cerca este corrida a x=52 (la calle se movio +8 para dar espacio)
-  cerca(52,-55,52,0); cerca(52,40,52,68);
+  // cerca este de vuelta a x=44: el satelite muestra la carretera PEGADA al
+  // costado este del sitio (se deshace el corrimiento +8)
+  cerca(44,-55,44,0); cerca(44,40,44,68);
   cerca(-44,70,-6,70); cerca(6,70,44,70);   // sur con entrada central
 
   /* ---------- PLATAFORMA AMPLIADA + PISCINA (queda en su sitio, lado este) ----------
@@ -604,8 +615,8 @@ function buildSitio(){
      pisoMat(w,d) para que la baldosa se vea del MISMO tamaño que el atrio
      del templo — antes cada box() estiraba su propia textura distinto. */
   {
-    const PX1=23,PX2=48,PZ1=-56,PZ2=-27,H=1.2;          // plataforma (hasta los bloques marrones)
-    const P={minX:26,maxX:45,minZ:-53,maxZ:-30};        // piscina (fondo a 0.45)
+    const PX1=23,PX2=43.5,PZ1=-56,PZ2=-27,H=1.2;        // plataforma (dentro de la cerca en x=44)
+    const P={minX:26,maxX:42.5,minZ:-53,maxZ:-30};      // piscina (fondo a 0.45)
     const F=0.45;
     // plataforma: 4 piezas alrededor de la piscina
     box(P.minX-PX1,H,PZ2-PZ1,pisoMat(P.minX-PX1,PZ2-PZ1),(PX1+P.minX)/2,H/2,(PZ1+PZ2)/2);
@@ -655,15 +666,14 @@ function buildSitio(){
   const ac=document.createElement('canvas'); ac.width=64; ac.height=256;
   const ag=ac.getContext('2d'); ag.fillStyle='#3a3d42'; ag.fillRect(0,0,64,256);
   ag.fillStyle='#e8e8e2'; ag.fillRect(30,24,4,56); ag.fillRect(30,152,4,56);
-  // la calle ESTE va corrida +8m: da espacio a la plataforma ampliada del templo
+  // carreteras en su posicion original (satelite: la del este pasa junto al sitio)
   for(const sg of [-1,1]){
-    const off=sg>0?8:0;
     const t=new THREE.CanvasTexture(ac); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,9);
     const road=new THREE.Mesh(new THREE.PlaneGeometry(12,150),
       new THREE.MeshStandardMaterial({map:t,roughness:.95}));
-    road.rotation.x=-Math.PI/2; road.position.set(sg*53+off,0.012,5); road.receiveShadow=true; scene.add(road);
+    road.rotation.x=-Math.PI/2; road.position.set(sg*53,0.012,5); road.receiveShadow=true; scene.add(road);
     const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,150),M.concreto);
-    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7+off,0.02,5); anden.receiveShadow=true; scene.add(anden);
+    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7,0.02,5); anden.receiveShadow=true; scene.add(anden);
   }
 
   // Casas coloniales de teja al otro lado de las calles
@@ -677,8 +687,7 @@ function buildSitio(){
   }
   let ci=0;
   for(const sg of [-1,1]) for(let z=-42;z<=58;z+=25){
-    // las del este siguen a la calle corrida (+8)
-    casa(sg*66+(sg>0?8:0), z, 10+(ci%3)*2, 12, 3.6+(ci%2)*0.9, ci%2?M.muroCrema:M.muroBlanco); ci++;
+    casa(sg*66, z, 10+(ci%3)*2, 12, 3.6+(ci%2)*0.9, ci%2?M.muroCrema:M.muroBlanco); ci++;
   }
 
   // Palmeras reales repartidas por el parque (alturas variadas)
@@ -696,7 +705,8 @@ function buildSitio(){
       scene.add(fr);
     }
   }
-  [[-40,-42,11],[40,-60,9],[-40,58,10],[40,60,12],[-38,4,8.5],[38,44,9.5],[-20,64,10],[20,64,8.5]]
+  [[-40,-42,11],[40,-60,9],[-40,58,10],[40,60,12],[-38,4,8.5],[38,44,9.5],[-20,64,10],[20,64,8.5],
+   [-20,-38,10],[-20,-26,9],[-20,-14,11],[-20,-2,9.5],[-20,8,10.5]] // hilera oeste (satelite)
     .forEach(q=>palma2(q[0],q[1],q[2]));
   // Tamarindos frondosos asomando sobre la reja (Street View)
   arbol(-40,36,1.6,true); arbol(40,-2,1.5,true);
