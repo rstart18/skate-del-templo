@@ -981,6 +981,24 @@ const SKATER_TARGET_H = 1.7;   // estatura objetivo (m) — escala por HUESOS
 // la pose agachada de skateboarding difiere de la bind-pose T con que se mide.
 const SKATER_POS = { x: 0, y: 0.12, z: -0.9 };   // y medido: pies sobre el deck de la tabla 1.45
 const SKATER_GLB_V = 3;   // súbelo al regenerar skater.glb para reventar la caché
+// Quita el ROOT MOTION de un clip de Mixamo (global: lo usan el skater local
+// Y los avatares remotos del multijugador). Detecta el eje cuya deriva neta
+// domina su rango y lo aplana; conserva el vaivén de los demás.
+function stripRootMotion(clip){
+  if(clip.name==='fall') return;   // el fall SÍ debe desplomarse (root motion intacto)
+  clip.tracks.forEach(t=>{
+    if(!/Hips\.position$/.test(t.name)) return;
+    const v=t.values, n=v.length/3;
+    for(let ax=0; ax<3; ax++){
+      const first=v[ax], last=v[(n-1)*3+ax];
+      let min=Infinity, max=-Infinity;
+      for(let i=0;i<n;i++){ const x=v[i*3+ax]; if(x<min)min=x; if(x>max)max=x; }
+      if(max>min && Math.abs(last-first) > (max-min)*0.5){
+        for(let i=0;i<n;i++) v[i*3+ax]=first;   // eje de viaje → anclado
+      }
+    }
+  });
+}
 new THREE.GLTFLoader().load('../assets/models_final/skater.glb?v='+SKATER_GLB_V, gltf=>{
   skaterModel = gltf.scene;
   skaterModel.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
@@ -1018,21 +1036,6 @@ new THREE.GLTFLoader().load('../assets/models_final/skater.glb?v='+SKATER_GLB_V,
   // de asumir ejes, DETECTAMOS el eje cuya deriva neta domina su rango y lo
   // aplanamos; los demás conservan su vaivén (bob/agacharse). Genérico para
   // cualquier clip futuro (jumping, fall, etc.).
-  function stripRootMotion(clip){
-    if(clip.name==='fall') return;   // el fall SÍ debe desplomarse (root motion intacto)
-    clip.tracks.forEach(t=>{
-      if(!/Hips\.position$/.test(t.name)) return;
-      const v=t.values, n=v.length/3;
-      for(let ax=0; ax<3; ax++){
-        const first=v[ax], last=v[(n-1)*3+ax];
-        let min=Infinity, max=-Infinity;
-        for(let i=0;i<n;i++){ const x=v[i*3+ax]; if(x<min)min=x; if(x>max)max=x; }
-        if(max>min && Math.abs(last-first) > (max-min)*0.5){
-          for(let i=0;i<n;i++) v[i*3+ax]=first;   // eje de viaje → anclado
-        }
-      }
-    });
-  }
   gltf.animations.forEach(c=>{ stripRootMotion(c); skaterActions[c.name]=skaterMixer.clipAction(c); });
   const first = skaterActions['idle'] || Object.values(skaterActions)[0];
   if(first){ first.play(); skaterCurClip = skaterActions['idle'] ? 'idle' : Object.keys(skaterActions)[0]; }
