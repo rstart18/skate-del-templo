@@ -1257,6 +1257,21 @@ function updateHUD(){
 function addTrick(name,pts){
   S.comboTricks.push(name);S.comboPts+=pts;pop(name+'  +'+pts);
 }
+// Rotacion de la TABLA durante un truco (trickT 0->1). GLOBAL: la usan el
+// jugador local Y los avatares remotos (que reproducen el mismo truco), para
+// que se vean identicos sin transmitir la rotacion cruda frame a frame.
+function applyBoardTrick(rot, anim, trickT, dir){
+  const t=trickT*Math.PI*2;
+  // POP: nariz arriba al despegar, tabla plana al catch (x+ levanta la cola -> pop negativo)
+  const pop=-0.42*Math.sin(Math.PI*Math.min(1,trickT*1.5));
+  const d=dir||-1;   // shove: -1 backside, +1 frontside
+  if(anim==='flip'){rot.set(pop,0,-t);}          // kickflip
+  else if(anim==='flip2'){rot.set(pop,0,t);}     // heelflip
+  else if(anim==='shuv'){rot.set(pop,d*t*0.5,0);}
+  else if(anim==='shuv360'){rot.set(pop,d*t,0);}
+  else if(anim==='treflip'){rot.set(pop,-t,-t);} // kickflip + BS 360 shove
+  else rot.set(t,0,0);                            // impossible (roll)
+}
 function startTrick(name,pts,anim,key){
   if(S.trick)return;
   // en el hop desde un riel el aire es corto: el truco gira mas rapido
@@ -1514,17 +1529,7 @@ function step(dt){
   body.rotation.x+= ((S.charging?.35:0)-body.rotation.x)*Math.min(1,dt*10);
   body.position.y=S.charging?-.12:0;
   if(S.trick){
-    const t=S.trickT*Math.PI*2;
-    // POP (referencias reales): nariz arriba al despegar, tabla plana al catch
-    // (rotation.x positivo levanta la COLA -> el pop va negativo)
-    const pop=-0.42*Math.sin(Math.PI*Math.min(1,S.trickT*1.5));
-    const d=S.trick.dir||-1;   // shove: -1 = backside (scoop clasico), +1 = frontside
-    if(S.trick.anim==='flip'){boardGrp.rotation.z=-t;boardGrp.rotation.x=pop;}      // kickflip: gira al lado contrario del heel
-    else if(S.trick.anim==='flip2'){boardGrp.rotation.z=t;boardGrp.rotation.x=pop;} // heelflip
-    else if(S.trick.anim==='shuv'){boardGrp.rotation.y=d*t*0.5;boardGrp.rotation.x=pop;}
-    else if(S.trick.anim==='shuv360'){boardGrp.rotation.y=d*t;boardGrp.rotation.x=pop;}
-    else if(S.trick.anim==='treflip'){boardGrp.rotation.z=-t;boardGrp.rotation.y=-t;boardGrp.rotation.x=pop;} // kickflip + BS 360 shove
-    else boardGrp.rotation.x=t;
+    applyBoardTrick(boardGrp.rotation, S.trick.anim, S.trickT, S.trick.dir||-1);
   }else{
     boardGrp.rotation.x*=0.6;boardGrp.rotation.y*=0.6;boardGrp.rotation.z*=0.6;
   }
@@ -1638,6 +1643,12 @@ function animate(){
   mpUpdate(dt);   // skaters remotos (Mundo Online)
   if(flyMode){ flyUpdate(dt); renderer.render(scene,camera); return; }
   step(dt);
+  // transmitir el evento de truco al iniciarse o cambiar (los demas lo reproducen)
+  if(MP.on){
+    const sig=S.trick?(S.trick.anim+'/'+(S.trick.dir||-1)):'';
+    if(sig&&sig!==mpLastTrickSig)mpSendTrick(S.trick.anim,S.trick.rate,S.trick.dir);
+    mpLastTrickSig=sig;
+  }
   if(skaterMixer){
     // Máquina de estados de animación:
     //   aire (no grind)  -> jumping (una vez, clava el último frame)
@@ -1808,6 +1819,11 @@ loadGameAssets();
 const MP_URL_PROD='wss://skate-del-templo-mp.onrender.com';   // servidor multijugador en Render
 const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostname||'localhost')+':8124');
 const MP={ws:null,on:false,id:null,others:{},timer:null};
+let mpLastTrickSig='';
+function mpSendTrick(anim,rate,dir){
+  if(MP.on&&MP.ws&&MP.ws.readyState===1)
+    MP.ws.send(JSON.stringify({t:'trk',d:{anim,rate:rate||2,dir:dir||-1}}));
+}
 
 // Clona un modelo con SkinnedMesh COMPARTIENDO geometría y materiales/texturas
 // (solo duplica el esqueleto). Critico para movil: sin esto, cada avatar
@@ -1883,7 +1899,9 @@ function mpAvatar(name,id){
     mpProto.anims.forEach(cl=>{ holder.actions[cl.name]=holder.mixer.clipAction(cl); });
     const first=holder.actions['idle']||Object.values(holder.actions)[0];
     if(first){first.play();holder.cur='idle';}
-    g.add(mpProto.board.clone(true));   // tabla: clon normal (comparte geo/textura)
+    holder.board=mpProto.board.clone(true);   // tabla: clon normal (comparte geo/textura)
+    g.add(holder.board);
+    if(holder.pendingTrick){holder.trick={...holder.pendingTrick,t:0};holder.pendingTrick=null;}
   };
   mpEnsureProto();
   if(mpProto.ready) build(); else mpProto.queue.push(build);
@@ -1923,7 +1941,21 @@ function mpUpdate(dt){
     g.rotation.y+=dy*k;
     if(o.t.clip)mpSetClip(o.h,o.t.clip);
     if(o.h.mixer)o.h.mixer.update(dt);
+    // reproducir el truco de la tabla (mismo formula que el jugador local)
+    const tr=o.h.trick, bd=o.h.board;
+    if(tr&&bd){
+      tr.t+=dt*(tr.rate||2);
+      if(tr.t>=1){ bd.rotation.set(0,0,0); o.h.trick=null; }
+      else applyBoardTrick(bd.rotation, tr.anim, tr.t, tr.dir);
+    }else if(bd&&(bd.rotation.x||bd.rotation.y||bd.rotation.z)){
+      bd.rotation.x*=0.6;bd.rotation.y*=0.6;bd.rotation.z*=0.6;   // asentar al terminar
+    }
   }
+}
+function mpStartRemoteTrick(id,d){
+  const o=MP.others[id]; if(!o) return;
+  if(o.h.board) o.h.trick={anim:d.anim,rate:d.rate||2,dir:d.dir||-1,t:0};
+  else o.h.pendingTrick={anim:d.anim,rate:d.rate||2,dir:d.dir||-1};  // aun cargando
 }
 function mpConnect(name,ok,fail,waking){
   if(!MP_URL){fail('El servidor público aún no está configurado.');return;}
@@ -1958,6 +1990,7 @@ function mpConnect(name,ok,fail,waking){
     }
     if(m.t==='join')mpAddPlayer(m.id,m.name,null);
     if(m.t==='s')mpApply(m.id,m.d);
+    if(m.t==='trk')mpStartRemoteTrick(m.id,m.d);
     if(m.t==='leave')mpRemovePlayer(m.id);
   };
   ws.onerror=()=>{if(!resuelto){resuelto=true;clearAll();fail('No se pudo conectar.');}};

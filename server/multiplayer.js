@@ -57,6 +57,10 @@ wss.on('connection', (ws) => {
       if (p) p.state = m.d;
       broadcast({ t: 's', id: myId, d: m.d }, myId);
     }
+
+    if (m.t === 'trk' && myId !== null) {          // evento de truco (los demas lo reproducen)
+      broadcast({ t: 'trk', id: myId, d: m.d }, myId);
+    }
   });
 
   ws.on('close', () => {
