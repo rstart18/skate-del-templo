@@ -814,7 +814,7 @@ for(const dz of [-.7,.7]){
 boardGrp.position.y=.25;skater.add(boardGrp);
 
 /* ---- Tabla SNAIKYY (glb del pipeline) — reemplaza la procedural ---- */
-const BOARD_GLB_V = 1;
+const BOARD_GLB_V = 2;   // v2: texturas 512² para movil (iOS)
 const BOARD_LEN   = 1.45;          // largo visual de la tabla (antes 2.1: muy grande)
 const BOARD_NUDGE = { x:0, z:0 };  // ajuste fino de posición respecto al skater
 new THREE.GLTFLoader().load('../assets/models/53914247a877a402.glb?v='+BOARD_GLB_V, gltf=>{
@@ -980,7 +980,7 @@ const SKATER_TARGET_H = 1.7;   // estatura objetivo (m) — escala por HUESOS
 // Posición local afinada sobre la tabla (x,y,z). y es explícita (no automática):
 // la pose agachada de skateboarding difiere de la bind-pose T con que se mide.
 const SKATER_POS = { x: 0, y: 0.12, z: -0.9 };   // y medido: pies sobre el deck de la tabla 1.45
-const SKATER_GLB_V = 3;   // súbelo al regenerar skater.glb para reventar la caché
+const SKATER_GLB_V = 4;   // v4: texturas 1024² para movil (iOS); súbelo al regenerar
 // Quita el ROOT MOTION de un clip de Mixamo (global: lo usan el skater local
 // Y los avatares remotos del multijugador). Detecta el eje cuya deriva neta
 // domina su rango y lo aplana; conserva el vaivén de los demás.
