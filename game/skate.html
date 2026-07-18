@@ -28,6 +28,23 @@
     text-shadow:0 1px 4px rgba(0,0,0,.6);user-select:none;pointer-events:none}
   #title span{display:block;font-size:15px;font-weight:800;color:#ffd257;letter-spacing:.5px}
   .hidden{opacity:0}
+  /* ---------- menu de mundos ---------- */
+  #menu{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    background:rgba(8,10,16,.78);backdrop-filter:blur(3px)}
+  #menubox{background:rgba(16,19,28,.96);border:1px solid rgba(255,210,87,.35);border-radius:16px;
+    padding:28px 34px;text-align:center;max-width:86vw}
+  #menubox h1{color:#ffd257;font-size:26px;letter-spacing:1px;margin:0 0 2px}
+  #menubox .sub{color:rgba(255,255,255,.65);font-size:12.5px;margin:0 0 18px}
+  #mpname{display:block;width:100%;box-sizing:border-box;margin:0 0 14px;padding:10px 12px;
+    border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);
+    color:#fff;font-size:15px;text-align:center;outline:none}
+  #mpname:focus{border-color:#ffd257}
+  #menubox button{display:block;width:100%;margin:8px 0;padding:12px;border-radius:10px;border:0;
+    font-size:16px;font-weight:800;cursor:pointer;color:#141821}
+  #btnLocal{background:#e8e4da}
+  #btnOnline{background:#ffd257}
+  #menubox button:disabled{opacity:.45;cursor:default}
+  #mpstatus{color:#ff9d7a;font-size:12.5px;min-height:16px;margin-top:8px}
   /* ---------- Controles táctiles (solo en dispositivos touch) ---------- */
   #touchui{position:fixed;inset:0;z-index:20;display:none;pointer-events:none;user-select:none;
     -webkit-user-select:none;touch-action:none}
@@ -59,6 +76,17 @@
 </style>
 </head>
 <body>
+<!-- Menu de mundos: Local u Online (multijugador) -->
+<div id="menu">
+  <div id="menubox">
+    <h1>SKATE DEL TEMPLO</h1>
+    <p class="sub">Templo Histórico · Villa del Rosario</p>
+    <input id="mpname" maxlength="16" placeholder="tu nombre de skater" autocomplete="off">
+    <button id="btnLocal">🛹 &nbsp;Mundo Local</button>
+    <button id="btnOnline">🌐 &nbsp;Mundo Online</button>
+    <div id="mpstatus"></div>
+  </div>
+</div>
 <div id="hud">
   <div id="score">0</div>
   <div id="best">Mejor combo: 0</div>
@@ -1604,6 +1632,7 @@ function trickPoseLayer(){
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),0.05);
+  mpUpdate(dt);   // skaters remotos (Mundo Online)
   if(flyMode){ flyUpdate(dt); renderer.render(scene,camera); return; }
   step(dt);
   if(skaterMixer){
@@ -1765,6 +1794,128 @@ function loadGameAssets(){
     .catch(err=>console.warn('[assets] no se pudo leer el manifest:', err));
 }
 loadGameAssets();
+
+/* ============================================================
+   MULTIJUGADOR (Mundo Online) — cliente WebSocket
+   Cada cliente simula SU fisica; aqui solo se envia el estado propio
+   (10 veces/seg) y se dibujan los skaters remotos interpolados.
+   ============================================================ */
+// En localhost apunta al servidor local (npm run mp). En produccion (https)
+// pon aqui la URL wss:// del servidor publico cuando exista.
+const MP_URL_PROD='';   // ej: 'wss://skate-mp.midominio.com'
+const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostname||'localhost')+':8124');
+const MP={ws:null,on:false,id:null,others:{},timer:null};
+
+function mpAvatar(name,id){
+  // skater remoto estilizado (v1): cuerpo low-poly + tabla + nombre flotante
+  const g=new THREE.Group();
+  const tono=[0x7ac0ff,0xffa07a,0x9dff7a,0xf3ff7a,0xda9dff,0x7affd8][id%6];
+  const camisa=new THREE.MeshStandardMaterial({color:tono,roughness:.8});
+  const piel=new THREE.MeshStandardMaterial({color:0xc9976f,roughness:.9});
+  const negro=new THREE.MeshStandardMaterial({color:0x23252e,roughness:.8});
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(.42,.5,.24),camisa);torso.position.y=.95;g.add(torso);
+  const cabeza=new THREE.Mesh(new THREE.BoxGeometry(.22,.22,.22),piel);cabeza.position.y=1.34;g.add(cabeza);
+  const gorra=new THREE.Mesh(new THREE.BoxGeometry(.24,.08,.24),negro);gorra.position.y=1.47;g.add(gorra);
+  for(const dx of [-.11,.11]){
+    const pierna=new THREE.Mesh(new THREE.BoxGeometry(.15,.5,.15),negro);
+    pierna.position.set(dx,.45,0);g.add(pierna);
+  }
+  const tabla=new THREE.Mesh(new THREE.BoxGeometry(.28,.05,1.15),negro);
+  tabla.position.y=.16;g.add(tabla);
+  for(const dz of [-.4,.4]){
+    const rueda=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.26,8),
+      new THREE.MeshStandardMaterial({color:0xf0c94a}));
+    rueda.rotation.z=Math.PI/2;rueda.position.set(0,.08,dz);g.add(rueda);
+  }
+  // nombre flotante
+  const c=document.createElement('canvas');c.width=256;c.height=64;
+  const x2=c.getContext('2d');x2.font='bold 34px Segoe UI';x2.textAlign='center';
+  x2.fillStyle='rgba(0,0,0,.55)';x2.fillRect(0,8,256,48);
+  x2.fillStyle='#ffd257';x2.fillText(name,128,42);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
+  sp.scale.set(1.9,.48,1);sp.position.y=1.85;g.add(sp);
+  g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  scene.add(g);
+  return g;
+}
+
+function mpApply(id,d){
+  const o=MP.others[id]; if(!o||!d) return;
+  o.t={x:d.x,y:d.y,z:d.z,ry:d.ry};
+}
+function mpAddPlayer(id,name,state){
+  MP.others[id]={grp:mpAvatar(name||'skater',id),t:null};
+  if(state)mpApply(id,state);
+}
+function mpRemovePlayer(id){
+  const o=MP.others[id]; if(!o) return;
+  scene.remove(o.grp); delete MP.others[id];
+}
+function mpUpdate(dt){
+  if(!MP.on) return;
+  for(const id in MP.others){
+    const o=MP.others[id]; if(!o.t) continue;
+    const k=Math.min(1,dt*10);
+    o.grp.position.x+=(o.t.x-o.grp.position.x)*k;
+    o.grp.position.y+=(o.t.y-o.grp.position.y)*k;
+    o.grp.position.z+=(o.t.z-o.grp.position.z)*k;
+    let dy=o.t.ry-o.grp.rotation.y;
+    while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
+    o.grp.rotation.y+=dy*k;
+  }
+}
+function mpConnect(name,ok,fail){
+  if(!MP_URL){fail('El servidor público aún no está configurado.');return;}
+  let resuelto=false;
+  const ws=new WebSocket(MP_URL);
+  const timeout=setTimeout(()=>{if(!resuelto){resuelto=true;ws.close();fail('El servidor no responde.');}},5000);
+  ws.onopen=()=>{ws.send(JSON.stringify({t:'join',name}));};
+  ws.onmessage=ev=>{
+    const m=JSON.parse(ev.data);
+    if(m.t==='welcome'){
+      resuelto=true;clearTimeout(timeout);
+      MP.ws=ws;MP.on=true;MP.id=m.id;
+      for(const p of m.players)mpAddPlayer(p.id,p.name,p.state);
+      MP.timer=setInterval(()=>{
+        if(ws.readyState===1)ws.send(JSON.stringify({t:'s',
+          d:{x:+S.x.toFixed(2),y:+S.y.toFixed(2),z:+S.z.toFixed(2),
+             ry:+skater.rotation.y.toFixed(3),clip:skaterCurClip}}));
+      },100);
+      ok();
+    }
+    if(m.t==='join')mpAddPlayer(m.id,m.name,null);
+    if(m.t==='s')mpApply(m.id,m.d);
+    if(m.t==='leave')mpRemovePlayer(m.id);
+  };
+  ws.onerror=()=>{if(!resuelto){resuelto=true;clearTimeout(timeout);fail('No se pudo conectar.');}};
+  ws.onclose=()=>{
+    if(MP.on){ // caida en pleno juego: volver a local sin romper nada
+      MP.on=false;clearInterval(MP.timer);
+      for(const id in MP.others)mpRemovePlayer(id);
+      const st=document.getElementById('mpstatus');
+    }
+  };
+}
+
+/* ---------- menu de mundos ---------- */
+(function(){
+  const menu=document.getElementById('menu'), inp=document.getElementById('mpname'),
+        st=document.getElementById('mpstatus'), bO=document.getElementById('btnOnline');
+  inp.value=localStorage.getItem('mpName')||'';
+  if(location.protocol==='https:'&&!MP_URL_PROD){
+    bO.disabled=true; st.textContent='Mundo Online: próximamente';
+  }
+  document.getElementById('btnLocal').addEventListener('click',()=>{menu.style.display='none';});
+  bO.addEventListener('click',()=>{
+    const name=(inp.value.trim()||'skater').slice(0,16);
+    localStorage.setItem('mpName',name);
+    st.style.color='#9dff7a'; st.textContent='Conectando…';
+    bO.disabled=true;
+    mpConnect(name,
+      ()=>{menu.style.display='none';},
+      msg=>{st.style.color='#ff9d7a';st.textContent=msg+' Puedes jugar en Mundo Local.';bO.disabled=false;});
+  });
+})();
 
 resetPos();
 animate();
