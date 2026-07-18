@@ -288,9 +288,9 @@ function buildTemplo(){
       walls.push({minX:sgn*MX-0.55,maxX:sgn*MX+0.55,minZ:MZ1,maxZ:MZ2,h:0.7,walkTop:true});
       rails.push({x1:sgn*MX,z1:MZ1,x2:sgn*MX,z2:MZ2,y:0.7});
     }
-    // lado sur: el tramo OESTE del muro se corto (pedido del usuario) — queda
-    // el tramo este + los postes del porton; el suroeste queda abierto
-    for(const [xa,xb] of [[2,MX]]){
+    // lado sur: el tramo ESTE del muro se corto (pedido del usuario, 2a ronda:
+    // el de la imagen junto al templo) — queda el tramo oeste + los postes
+    for(const [xa,xb] of [[-MX,-2]]){
       const w=xb-xa;
       box(w-0.2,0.68,0.9,M.piedraReal,(xa+xb)/2,0.34,MZ2);
       walls.push({minX:xa,maxX:xb,minZ:MZ2-0.45,maxZ:MZ2+0.45,h:0.7,walkTop:true});
