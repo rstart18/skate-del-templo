@@ -1807,61 +1807,87 @@ const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostn
 const MP={ws:null,on:false,id:null,others:{},timer:null};
 
 function mpAvatar(name,id){
-  // skater remoto estilizado (v1): cuerpo low-poly + tabla + nombre flotante
+  // skater remoto REAL: su propia copia del skater.glb riggeado + tabla SNAIKYY
   const g=new THREE.Group();
-  const tono=[0x7ac0ff,0xffa07a,0x9dff7a,0xf3ff7a,0xda9dff,0x7affd8][id%6];
-  const camisa=new THREE.MeshStandardMaterial({color:tono,roughness:.8});
-  const piel=new THREE.MeshStandardMaterial({color:0xc9976f,roughness:.9});
-  const negro=new THREE.MeshStandardMaterial({color:0x23252e,roughness:.8});
-  const torso=new THREE.Mesh(new THREE.BoxGeometry(.42,.5,.24),camisa);torso.position.y=.95;g.add(torso);
-  const cabeza=new THREE.Mesh(new THREE.BoxGeometry(.22,.22,.22),piel);cabeza.position.y=1.34;g.add(cabeza);
-  const gorra=new THREE.Mesh(new THREE.BoxGeometry(.24,.08,.24),negro);gorra.position.y=1.47;g.add(gorra);
-  for(const dx of [-.11,.11]){
-    const pierna=new THREE.Mesh(new THREE.BoxGeometry(.15,.5,.15),negro);
-    pierna.position.set(dx,.45,0);g.add(pierna);
-  }
-  const tabla=new THREE.Mesh(new THREE.BoxGeometry(.28,.05,1.15),negro);
-  tabla.position.y=.16;g.add(tabla);
-  for(const dz of [-.4,.4]){
-    const rueda=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.26,8),
-      new THREE.MeshStandardMaterial({color:0xf0c94a}));
-    rueda.rotation.z=Math.PI/2;rueda.position.set(0,.08,dz);g.add(rueda);
-  }
+  const holder={grp:g,mixer:null,actions:{},cur:null};
   // nombre flotante
   const c=document.createElement('canvas');c.width=256;c.height=64;
   const x2=c.getContext('2d');x2.font='bold 34px Segoe UI';x2.textAlign='center';
   x2.fillStyle='rgba(0,0,0,.55)';x2.fillRect(0,8,256,48);
   x2.fillStyle='#ffd257';x2.fillText(name,128,42);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
-  sp.scale.set(1.9,.48,1);sp.position.y=1.85;g.add(sp);
-  g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  sp.scale.set(1.9,.48,1);sp.position.y=2.15;g.add(sp);
+  // personaje (carga independiente por jugador: clonar SkinnedMesh en r128
+  // requiere SkeletonUtils; una carga propia trae su esqueleto y clips)
+  new THREE.GLTFLoader().load('../assets/models_final/skater.glb?v='+SKATER_GLB_V, gltf=>{
+    const model=gltf.scene;
+    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}});
+    let skinned=null; model.traverse(o=>{if(o.isSkinnedMesh)skinned=o;});
+    model.rotation.set(0,SKATER_MODEL_YAW,0);
+    model.updateWorldMatrix(true,true);
+    if(skinned){
+      const bb=new THREE.Box3(), v=new THREE.Vector3();
+      skinned.skeleton.bones.forEach(b=>{b.getWorldPosition(v);bb.expandByPoint(v);});
+      const rawH=bb.getSize(new THREE.Vector3()).y||1;
+      model.scale.setScalar(SKATER_TARGET_H/rawH);
+    }
+    model.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
+    g.add(model);
+    holder.mixer=new THREE.AnimationMixer(model);
+    gltf.animations.forEach(cl=>{stripRootMotion(cl);holder.actions[cl.name]=holder.mixer.clipAction(cl);});
+    const first=holder.actions['idle']||Object.values(holder.actions)[0];
+    if(first){first.play();holder.cur='idle';}
+  });
+  // tabla SNAIKYY (glb del pipeline, escalada como la principal)
+  new THREE.GLTFLoader().load('../assets/models/53914247a877a402.glb?v='+BOARD_GLB_V, gltf=>{
+    const b=gltf.scene;
+    b.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+    const box=new THREE.Box3().setFromObject(b);
+    const sz=box.getSize(new THREE.Vector3());
+    const esc=BOARD_LEN/(sz.z||1); b.scale.setScalar(esc);
+    const box2=new THREE.Box3().setFromObject(b);
+    const c2=box2.getCenter(new THREE.Vector3());
+    const sz2=box2.getSize(new THREE.Vector3());
+    b.position.sub(c2);
+    const porta=new THREE.Group(); porta.add(b);
+    porta.position.set(SKATER_POS.x+BOARD_NUDGE.x, sz2.y/2, SKATER_POS.z+BOARD_NUDGE.z);
+    g.add(porta);
+  });
   scene.add(g);
-  return g;
+  return holder;
 }
 
 function mpApply(id,d){
   const o=MP.others[id]; if(!o||!d) return;
-  o.t={x:d.x,y:d.y,z:d.z,ry:d.ry};
+  o.t={x:d.x,y:d.y,z:d.z,ry:d.ry,clip:d.clip};
 }
 function mpAddPlayer(id,name,state){
-  MP.others[id]={grp:mpAvatar(name||'skater',id),t:null};
+  MP.others[id]={h:mpAvatar(name||'skater',id),t:null};
   if(state)mpApply(id,state);
 }
 function mpRemovePlayer(id){
   const o=MP.others[id]; if(!o) return;
-  scene.remove(o.grp); delete MP.others[id];
+  scene.remove(o.h.grp); delete MP.others[id];
+}
+function mpSetClip(h,name){
+  if(!h.mixer||h.cur===name||!h.actions[name])return;
+  const nx=h.actions[name], pv=h.actions[h.cur];
+  nx.reset().play(); if(pv)nx.crossFadeFrom(pv,0.2,false);
+  h.cur=name;
 }
 function mpUpdate(dt){
   if(!MP.on) return;
   for(const id in MP.others){
     const o=MP.others[id]; if(!o.t) continue;
-    const k=Math.min(1,dt*10);
-    o.grp.position.x+=(o.t.x-o.grp.position.x)*k;
-    o.grp.position.y+=(o.t.y-o.grp.position.y)*k;
-    o.grp.position.z+=(o.t.z-o.grp.position.z)*k;
-    let dy=o.t.ry-o.grp.rotation.y;
+    const g=o.h.grp, k=Math.min(1,dt*10);
+    g.position.x+=(o.t.x-g.position.x)*k;
+    g.position.y+=(o.t.y-g.position.y)*k;
+    g.position.z+=(o.t.z-g.position.z)*k;
+    let dy=o.t.ry-g.rotation.y;
     while(dy>Math.PI)dy-=2*Math.PI; while(dy<-Math.PI)dy+=2*Math.PI;
-    o.grp.rotation.y+=dy*k;
+    g.rotation.y+=dy*k;
+    if(o.t.clip)mpSetClip(o.h,o.t.clip);
+    if(o.h.mixer)o.h.mixer.update(dt);
   }
 }
 function mpConnect(name,ok,fail){
