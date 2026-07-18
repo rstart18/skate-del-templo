@@ -43,10 +43,10 @@ wss.on('connection', (ws) => {
       myId = nextId++;
       const name = String(m.name || 'skater').slice(0, 16);
       players.set(myId, { ws, name, state: m.state || null });
-      // al nuevo: su id + quienes ya estan
+      // al nuevo: su id + quienes ya estan (incluye si tienen voz activa)
       send(ws, { t: 'welcome', id: myId,
         players: [...players].filter(([id]) => id !== myId)
-          .map(([id, p]) => ({ id, name: p.name, state: p.state })) });
+          .map(([id, p]) => ({ id, name: p.name, state: p.state, voice: !!p.voice })) });
       // a los demas: entro alguien
       broadcast({ t: 'join', id: myId, name }, myId);
       console.log(`[+] ${name} (#${myId}) — ${players.size} en linea`);
@@ -60,6 +60,17 @@ wss.on('connection', (ws) => {
 
     if (m.t === 'trk' && myId !== null) {          // evento de truco (los demas lo reproducen)
       broadcast({ t: 'trk', id: myId, d: m.d }, myId);
+    }
+
+    if (m.t === 'voice' && myId !== null) {        // aviso: activo/desactivo mi microfono
+      const p = players.get(myId); if (p) p.voice = !!m.on;
+      broadcast({ t: 'voice', id: myId, on: !!m.on }, myId);
+    }
+
+    if (m.t === 'rtc' && myId !== null && m.to != null) {  // señalizacion WebRTC (dirigida)
+      const target = players.get(m.to);
+      if (target && target.ws.readyState === 1)
+        target.ws.send(JSON.stringify({ t: 'rtc', from: myId, sub: m.sub, d: m.d }));
     }
   });
 

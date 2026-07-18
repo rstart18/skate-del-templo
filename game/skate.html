@@ -17,6 +17,10 @@
     max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #stancetag{position:fixed;top:86px;left:50%;transform:translateX(-50%);color:#ffd257;font-weight:800;
     font-size:14px;letter-spacing:3px;display:none;text-shadow:0 1px 4px rgba(0,0,0,.8);z-index:12}
+  #micbtn{position:fixed;top:56px;right:16px;width:46px;height:46px;border-radius:50%;border:2px solid rgba(255,255,255,.4);
+    background:rgba(15,18,28,.55);font-size:20px;cursor:pointer;z-index:30;display:none;line-height:1}
+  #micbtn.on{background:rgba(157,255,122,.35);border-color:#9dff7a}
+  body.touch #micbtn{width:11vmin;height:11vmin;font-size:5vmin;top:16vmin;right:3vmin}
   #trickpop{position:fixed;top:110px;left:50%;transform:translateX(-50%);color:#fff;font-size:18px;font-weight:700;
     text-shadow:0 2px 8px rgba(0,0,0,.7);z-index:10;text-align:center;pointer-events:none;transition:opacity .4s}
   #bail{position:fixed;top:40%;left:50%;transform:translateX(-50%) rotate(-6deg);color:#ff4d4d;font-size:56px;
@@ -94,6 +98,7 @@
 <div id="combo"></div>
 <div id="trickpop" class="hidden"></div>
 <div id="stancetag">SWITCH</div>
+<button id="micbtn" title="Micrófono (voz de proximidad)">🔇</button>
 <div id="bail">¡BAIL!</div>
 <div id="controls">
   <b>W / ↑</b> patear (velocidad) &nbsp; <b>A·D / ←·→</b> girar<br>
@@ -1818,11 +1823,84 @@ loadGameAssets();
 // pon aqui la URL wss:// del servidor publico cuando exista.
 const MP_URL_PROD='wss://skate-del-templo-mp.onrender.com';   // servidor multijugador en Render
 const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostname||'localhost')+':8124');
-const MP={ws:null,on:false,id:null,others:{},timer:null};
+const MP={ws:null,on:false,id:null,others:{},timer:null,voiceOn:false};
 let mpLastTrickSig='';
 function mpSendTrick(anim,rate,dir){
   if(MP.on&&MP.ws&&MP.ws.readyState===1)
     MP.ws.send(JSON.stringify({t:'trk',d:{anim,rate:rate||2,dir:dir||-1}}));
+}
+
+/* ============================================================
+   CHAT DE VOZ DE PROXIMIDAD (WebRTC P2P)
+   El audio va DIRECTO entre navegadores; el servidor solo relaya la
+   señalizacion. El volumen de cada voz baja con la distancia en el mapa.
+   ============================================================ */
+const RTC={ config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]},
+           stream:null, peers:{}, MAXD:20 };
+function mpSend(o){ if(MP.ws&&MP.ws.readyState===1) MP.ws.send(JSON.stringify(o)); }
+
+async function voiceEnable(){
+  try{
+    RTC.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
+  }catch(e){ return {ok:false,msg:'Sin permiso de micrófono'}; }
+  MP.voiceOn=true;
+  mpSend({t:'voice',on:true});
+  for(const id in MP.others) if(MP.others[id].voice) rtcMaybeConnect(+id);
+  return {ok:true};
+}
+function voiceDisable(){
+  MP.voiceOn=false;
+  mpSend({t:'voice',on:false});
+  for(const id in RTC.peers) rtcClose(+id);
+  if(RTC.stream){ RTC.stream.getTracks().forEach(t=>t.stop()); RTC.stream=null; }
+}
+function rtcMaybeConnect(remoteId){
+  if(!MP.voiceOn||!RTC.stream) return;
+  const o=MP.others[remoteId]; if(!o||!o.voice||RTC.peers[remoteId]) return;
+  if(MP.id<remoteId) rtcCreatePeer(remoteId,true);   // el de menor id inicia (evita colisiones)
+}
+function rtcCreatePeer(remoteId,initiator){
+  const pc=new RTCPeerConnection(RTC.config);
+  const peer={pc,audioEl:null}; RTC.peers[remoteId]=peer;
+  RTC.stream.getTracks().forEach(t=>pc.addTrack(t,RTC.stream));
+  pc.onicecandidate=e=>{ if(e.candidate) mpSend({t:'rtc',to:remoteId,sub:'ice',d:e.candidate}); };
+  pc.ontrack=e=>{
+    const a=new Audio(); a.srcObject=e.streams[0]; a.autoplay=true; a.volume=0;
+    a.play().catch(()=>{}); peer.audioEl=a;
+  };
+  pc.onconnectionstatechange=()=>{ if(pc.connectionState==='failed') rtcClose(remoteId); };
+  if(initiator){
+    pc.createOffer().then(off=>pc.setLocalDescription(off))
+      .then(()=>mpSend({t:'rtc',to:remoteId,sub:'offer',d:pc.localDescription}));
+  }
+}
+async function rtcSignal(from,sub,d){
+  let peer=RTC.peers[from];
+  if(sub==='offer'){
+    if(!MP.voiceOn||!RTC.stream) return;            // no tengo voz -> ignoro
+    if(!peer){ rtcCreatePeer(from,false); peer=RTC.peers[from]; }
+    await peer.pc.setRemoteDescription(d);
+    const ans=await peer.pc.createAnswer(); await peer.pc.setLocalDescription(ans);
+    mpSend({t:'rtc',to:from,sub:'answer',d:peer.pc.localDescription});
+  }else if(sub==='answer'){ if(peer) await peer.pc.setRemoteDescription(d); }
+  else if(sub==='ice'){ if(peer) try{ await peer.pc.addIceCandidate(d); }catch(_){} }
+}
+function rtcClose(remoteId){
+  const peer=RTC.peers[remoteId]; if(!peer) return;
+  try{ peer.pc.close(); }catch(_){}
+  if(peer.audioEl){ peer.audioEl.srcObject=null; peer.audioEl.pause(); }
+  delete RTC.peers[remoteId];
+}
+// volumen por PROXIMIDAD: cada frame, segun distancia en el mapa
+function voiceProximity(){
+  if(!MP.voiceOn) return;
+  for(const id in RTC.peers){
+    const peer=RTC.peers[id], o=MP.others[id];
+    if(peer.audioEl&&o&&o.t){
+      const d=Math.hypot(o.t.x-S.x,o.t.z-S.z);
+      peer.audioEl.volume=Math.max(0,Math.min(1,1-d/RTC.MAXD));
+    }
+  }
 }
 
 // Clona un modelo con SkinnedMesh COMPARTIENDO geometría y materiales/texturas
@@ -1913,13 +1991,15 @@ function mpApply(id,d){
   const o=MP.others[id]; if(!o||!d) return;
   o.t={x:d.x,y:d.y,z:d.z,ry:d.ry,clip:d.clip};
 }
-function mpAddPlayer(id,name,state){
-  MP.others[id]={h:mpAvatar(name||'skater',id),t:null};
+function mpAddPlayer(id,name,state,voice){
+  MP.others[id]={h:mpAvatar(name||'skater',id),t:null,voice:!!voice};
   if(state)mpApply(id,state);
+  if(voice)rtcMaybeConnect(id);        // ya tenia voz -> emparejar si yo tambien
 }
 function mpRemovePlayer(id){
   const o=MP.others[id]; if(!o) return;
   o.h.dead=true;                       // por si el build() aun estaba en cola
+  rtcClose(id);                        // cerrar la voz con ese jugador
   scene.remove(o.h.grp); delete MP.others[id];
 }
 function mpSetClip(h,name){
@@ -1951,6 +2031,7 @@ function mpUpdate(dt){
       bd.rotation.x*=0.6;bd.rotation.y*=0.6;bd.rotation.z*=0.6;   // asentar al terminar
     }
   }
+  voiceProximity();   // volumen de las voces segun distancia (una vez por frame)
 }
 function mpStartRemoteTrick(id,d){
   const o=MP.others[id]; if(!o) return;
@@ -1980,7 +2061,8 @@ function mpConnect(name,ok,fail,waking){
     if(m.t==='welcome'){
       resuelto=true;clearAll();
       MP.ws=ws;MP.on=true;MP.id=m.id;
-      for(const p of m.players)mpAddPlayer(p.id,p.name,p.state);
+      for(const p of m.players)mpAddPlayer(p.id,p.name,p.state,p.voice);
+      document.getElementById('micbtn').style.display='block';   // voz disponible online
       MP.timer=setInterval(()=>{
         if(ws.readyState===1)ws.send(JSON.stringify({t:'s',
           d:{x:+S.x.toFixed(2),y:+S.y.toFixed(2),z:+S.z.toFixed(2),
@@ -1988,9 +2070,11 @@ function mpConnect(name,ok,fail,waking){
       },100);
       ok();
     }
-    if(m.t==='join')mpAddPlayer(m.id,m.name,null);
+    if(m.t==='join')mpAddPlayer(m.id,m.name,null,false);
     if(m.t==='s')mpApply(m.id,m.d);
     if(m.t==='trk')mpStartRemoteTrick(m.id,m.d);
+    if(m.t==='voice'){ const o=MP.others[m.id]; if(o){ o.voice=m.on; if(m.on)rtcMaybeConnect(m.id); else rtcClose(m.id); } }
+    if(m.t==='rtc')rtcSignal(m.from,m.sub,m.d);
     if(m.t==='leave')mpRemovePlayer(m.id);
   };
   ws.onerror=()=>{if(!resuelto){resuelto=true;clearAll();fail('No se pudo conectar.');}};
@@ -2021,6 +2105,21 @@ function mpConnect(name,ok,fail,waking){
       ()=>{menu.style.display='none';},
       msg=>{st.style.color='#ff9d7a';st.textContent=msg+' Puedes jugar en Mundo Local.';bO.disabled=false;},
       ()=>{st.style.color='#9dff7a';st.textContent='Despertando el servidor… (hasta ~1 min la 1ª vez)';});
+  });
+})();
+
+/* ---------- boton de microfono (voz de proximidad) ---------- */
+(function(){
+  const btn=document.getElementById('micbtn');
+  let busy=false;
+  const set=(on)=>{ btn.classList.toggle('on',on); btn.textContent=on?'🎤':'🔇'; };
+  btn.addEventListener('click',async()=>{
+    if(busy) return; busy=true;
+    if(!MP.voiceOn){
+      const r=await voiceEnable();
+      if(r.ok) set(true); else { btn.textContent='🚫'; setTimeout(()=>set(false),1800); }
+    }else{ voiceDisable(); set(false); }
+    busy=false;
   });
 })();
 
