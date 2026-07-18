@@ -288,8 +288,9 @@ function buildTemplo(){
       walls.push({minX:sgn*MX-0.55,maxX:sgn*MX+0.55,minZ:MZ1,maxZ:MZ2,h:0.7,walkTop:true});
       rails.push({x1:sgn*MX,z1:MZ1,x2:sgn*MX,z2:MZ2,y:0.7});
     }
-    // lado sur con PORTON de 4m (x -2..2) alineado al camino central
-    for(const [xa,xb] of [[-MX,-2],[2,MX]]){
+    // lado sur: el tramo OESTE del muro se corto (pedido del usuario) — queda
+    // el tramo este + los postes del porton; el suroeste queda abierto
+    for(const [xa,xb] of [[2,MX]]){
       const w=xb-xa;
       box(w-0.2,0.68,0.9,M.piedraReal,(xa+xb)/2,0.34,MZ2);
       walls.push({minX:xa,maxX:xb,minZ:MZ2-0.45,maxZ:MZ2+0.45,h:0.7,walkTop:true});
@@ -538,18 +539,8 @@ quarter(-45,30,Math.PI/2);
 quarter(45,10,-Math.PI/2);   // pared este, sube hacia +x
 quarter(45,30,-Math.PI/2);
 
-/* ---------- FUNBOX con barandal central ---------- */
-{
-  const fx=0,fz=12;
-  box(10,1,6,M.concreto,fx,.5,fz);
-  walls.push({minX:fx-5,maxX:fx+5,minZ:fz-3,maxZ:fz+3,h:1,walkTop:true});
-  kicker(fx,fz+4.9,0,10,3.8,1);
-  kicker(fx,fz-4.9,Math.PI,10,3.8,1);
-  const tube=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,12,10),M.metal);
-  tube.rotation.x=Math.PI/2;tube.position.set(fx,1.55,fz);tube.castShadow=true;scene.add(tube);
-  box(.1,.55,.1,M.metal,fx,1.27,fz-5.8);box(.1,.55,.1,M.metal,fx,1.27,fz+5.8);
-  rails.push({x1:fx,z1:fz-6,x2:fx,z2:fz+6,y:1.55});
-}
+/* ---------- FUNBOX eliminado (pedido del usuario): la rampa blanca con tubo
+   estorbaba el campo de ruinas del frente ---------- */
 
 /* ---------- JARDINERAS con borde grindable ---------- */
 function jardinera(x,z,w,d){
