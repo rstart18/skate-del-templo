@@ -1805,7 +1805,7 @@ loadGameAssets();
    ============================================================ */
 // En localhost apunta al servidor local (npm run mp). En produccion (https)
 // pon aqui la URL wss:// del servidor publico cuando exista.
-const MP_URL_PROD='';   // ej: 'wss://skate-mp.midominio.com'
+const MP_URL_PROD='wss://skate-del-templo-mp.onrender.com';   // servidor multijugador en Render
 const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostname||'localhost')+':8124');
 const MP={ws:null,on:false,id:null,others:{},timer:null};
 
@@ -1893,16 +1893,28 @@ function mpUpdate(dt){
     if(o.h.mixer)o.h.mixer.update(dt);
   }
 }
-function mpConnect(name,ok,fail){
+function mpConnect(name,ok,fail,waking){
   if(!MP_URL){fail('El servidor público aún no está configurado.');return;}
   let resuelto=false;
+  // El free tier de Render "duerme" sin trafico y, en frio, ROMPE el handshake
+  // WebSocket mientras despierta. Por eso primero lo despertamos con un fetch
+  // HTTP (que Render SI sostiene hasta que el proceso arranca ~50s) y solo
+  // entonces abrimos el WebSocket, ya con el servidor vivo.
+  const httpUrl=MP_URL.replace(/^wss:/,'https:').replace(/^ws:/,'http:');
+  let wokeTimer=setTimeout(()=>{if(!resuelto&&waking)waking();},1500);
+  fetch(httpUrl,{mode:'no-cors',cache:'no-store'})
+    .then(abrirWS).catch(abrirWS);   // resuelva o no, intentamos el WS
+  const failTimer=setTimeout(()=>{if(!resuelto){resuelto=true;fail('El servidor no responde.');}},75000);
+  const clearAll=()=>{clearTimeout(wokeTimer);clearTimeout(failTimer);};
+
+  function abrirWS(){
+  if(resuelto)return;
   const ws=new WebSocket(MP_URL);
-  const timeout=setTimeout(()=>{if(!resuelto){resuelto=true;ws.close();fail('El servidor no responde.');}},5000);
   ws.onopen=()=>{ws.send(JSON.stringify({t:'join',name}));};
   ws.onmessage=ev=>{
     const m=JSON.parse(ev.data);
     if(m.t==='welcome'){
-      resuelto=true;clearTimeout(timeout);
+      resuelto=true;clearAll();
       MP.ws=ws;MP.on=true;MP.id=m.id;
       for(const p of m.players)mpAddPlayer(p.id,p.name,p.state);
       MP.timer=setInterval(()=>{
@@ -1916,14 +1928,14 @@ function mpConnect(name,ok,fail){
     if(m.t==='s')mpApply(m.id,m.d);
     if(m.t==='leave')mpRemovePlayer(m.id);
   };
-  ws.onerror=()=>{if(!resuelto){resuelto=true;clearTimeout(timeout);fail('No se pudo conectar.');}};
+  ws.onerror=()=>{if(!resuelto){resuelto=true;clearAll();fail('No se pudo conectar.');}};
   ws.onclose=()=>{
     if(MP.on){ // caida en pleno juego: volver a local sin romper nada
       MP.on=false;clearInterval(MP.timer);
       for(const id in MP.others)mpRemovePlayer(id);
-      const st=document.getElementById('mpstatus');
     }
   };
+  } // fin abrirWS
 }
 
 /* ---------- menu de mundos ---------- */
@@ -1942,7 +1954,8 @@ function mpConnect(name,ok,fail){
     bO.disabled=true;
     mpConnect(name,
       ()=>{menu.style.display='none';},
-      msg=>{st.style.color='#ff9d7a';st.textContent=msg+' Puedes jugar en Mundo Local.';bO.disabled=false;});
+      msg=>{st.style.color='#ff9d7a';st.textContent=msg+' Puedes jugar en Mundo Local.';bO.disabled=false;},
+      ()=>{st.style.color='#9dff7a';st.textContent='Despertando el servidor… (hasta ~1 min la 1ª vez)';});
   });
 })();
 
