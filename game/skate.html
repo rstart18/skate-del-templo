@@ -1809,8 +1809,63 @@ const MP_URL_PROD='wss://skate-del-templo-mp.onrender.com';   // servidor multij
 const MP_URL=(location.protocol==='https:')?MP_URL_PROD:('ws://'+(location.hostname||'localhost')+':8124');
 const MP={ws:null,on:false,id:null,others:{},timer:null};
 
+// Clona un modelo con SkinnedMesh COMPARTIENDO geometría y materiales/texturas
+// (solo duplica el esqueleto). Critico para movil: sin esto, cada avatar
+// cargaba su propia malla+textura y iOS se quedaba sin memoria -> crash.
+// (Es la implementacion de THREE.SkeletonUtils.clone, embebida.)
+function mpCloneSkinned(source){
+  const cloneLookup=new Map(), sourceLookup=new Map();
+  const clone=source.clone();
+  (function par(a,b){ sourceLookup.set(b,a); cloneLookup.set(a,b);
+    for(let i=0;i<a.children.length;i++) par(a.children[i],b.children[i]); })(source,clone);
+  clone.traverse(node=>{
+    if(!node.isSkinnedMesh) return;
+    const src=sourceLookup.get(node), srcBones=src.skeleton.bones;
+    node.skeleton=src.skeleton.clone();
+    node.skeleton.bones=srcBones.map(b=>cloneLookup.get(b));
+    node.bind(node.skeleton, node.bindMatrix.clone());
+  });
+  return clone;
+}
+
+// Prototipos compartidos: el skater y la tabla se cargan UNA sola vez; cada
+// avatar remoto los clona (geometria/texturas compartidas).
+const mpProto={skater:null,anims:null,board:null,ready:false,queue:[],loading:false};
+function mpEnsureProto(){
+  if(mpProto.loading) return; mpProto.loading=true;
+  let a=false,b=false;
+  const done=()=>{ if(a&&b){ mpProto.ready=true; mpProto.queue.forEach(fn=>fn()); mpProto.queue=[]; } };
+  new THREE.GLTFLoader().load('../assets/models_final/skater.glb?v='+SKATER_GLB_V, gltf=>{
+    const model=gltf.scene;
+    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}});
+    let skinned=null; model.traverse(o=>{if(o.isSkinnedMesh)skinned=o;});
+    model.rotation.set(0,SKATER_MODEL_YAW,0); model.scale.setScalar(1);
+    model.updateWorldMatrix(true,true);
+    if(skinned){
+      const bb=new THREE.Box3(), v=new THREE.Vector3();
+      skinned.skeleton.bones.forEach(bo=>{bo.getWorldPosition(v);bb.expandByPoint(v);});
+      const rawH=bb.getSize(new THREE.Vector3()).y||1;
+      model.scale.setScalar(SKATER_TARGET_H/rawH);
+    }
+    model.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
+    model.updateWorldMatrix(true,true);
+    gltf.animations.forEach(stripRootMotion);      // se aplanan UNA vez (clips compartidos)
+    mpProto.skater=model; mpProto.anims=gltf.animations; a=true; done();
+  });
+  new THREE.GLTFLoader().load('../assets/models/53914247a877a402.glb?v='+BOARD_GLB_V, gltf=>{
+    const bd=gltf.scene;
+    bd.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+    let box=new THREE.Box3().setFromObject(bd), sz=box.getSize(new THREE.Vector3());
+    bd.scale.setScalar(BOARD_LEN/(sz.z||1)); bd.updateWorldMatrix(true,true);
+    box=new THREE.Box3().setFromObject(bd); sz=box.getSize(new THREE.Vector3());
+    bd.position.sub(box.getCenter(new THREE.Vector3()));
+    const porta=new THREE.Group(); porta.add(bd);
+    porta.position.set(SKATER_POS.x+BOARD_NUDGE.x, sz.y/2, SKATER_POS.z+BOARD_NUDGE.z);
+    mpProto.board=porta; b=true; done();
+  });
+}
+
 function mpAvatar(name,id){
-  // skater remoto REAL: su propia copia del skater.glb riggeado + tabla SNAIKYY
   const g=new THREE.Group();
   const holder={grp:g,mixer:null,actions:{},cur:null};
   // nombre flotante
@@ -1820,42 +1875,18 @@ function mpAvatar(name,id){
   x2.fillStyle='#ffd257';x2.fillText(name,128,42);
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true}));
   sp.scale.set(1.9,.48,1);sp.position.y=2.15;g.add(sp);
-  // personaje (carga independiente por jugador: clonar SkinnedMesh en r128
-  // requiere SkeletonUtils; una carga propia trae su esqueleto y clips)
-  new THREE.GLTFLoader().load('../assets/models_final/skater.glb?v='+SKATER_GLB_V, gltf=>{
-    const model=gltf.scene;
-    model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}});
-    let skinned=null; model.traverse(o=>{if(o.isSkinnedMesh)skinned=o;});
-    model.rotation.set(0,SKATER_MODEL_YAW,0);
-    model.updateWorldMatrix(true,true);
-    if(skinned){
-      const bb=new THREE.Box3(), v=new THREE.Vector3();
-      skinned.skeleton.bones.forEach(b=>{b.getWorldPosition(v);bb.expandByPoint(v);});
-      const rawH=bb.getSize(new THREE.Vector3()).y||1;
-      model.scale.setScalar(SKATER_TARGET_H/rawH);
-    }
-    model.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
-    g.add(model);
+  // construir cuando los prototipos esten listos (clonando, sin recargar)
+  const build=()=>{
+    if(holder.dead) return;
+    const model=mpCloneSkinned(mpProto.skater); g.add(model);
     holder.mixer=new THREE.AnimationMixer(model);
-    gltf.animations.forEach(cl=>{stripRootMotion(cl);holder.actions[cl.name]=holder.mixer.clipAction(cl);});
+    mpProto.anims.forEach(cl=>{ holder.actions[cl.name]=holder.mixer.clipAction(cl); });
     const first=holder.actions['idle']||Object.values(holder.actions)[0];
     if(first){first.play();holder.cur='idle';}
-  });
-  // tabla SNAIKYY (glb del pipeline, escalada como la principal)
-  new THREE.GLTFLoader().load('../assets/models/53914247a877a402.glb?v='+BOARD_GLB_V, gltf=>{
-    const b=gltf.scene;
-    b.traverse(o=>{if(o.isMesh)o.castShadow=true;});
-    const box=new THREE.Box3().setFromObject(b);
-    const sz=box.getSize(new THREE.Vector3());
-    const esc=BOARD_LEN/(sz.z||1); b.scale.setScalar(esc);
-    const box2=new THREE.Box3().setFromObject(b);
-    const c2=box2.getCenter(new THREE.Vector3());
-    const sz2=box2.getSize(new THREE.Vector3());
-    b.position.sub(c2);
-    const porta=new THREE.Group(); porta.add(b);
-    porta.position.set(SKATER_POS.x+BOARD_NUDGE.x, sz2.y/2, SKATER_POS.z+BOARD_NUDGE.z);
-    g.add(porta);
-  });
+    g.add(mpProto.board.clone(true));   // tabla: clon normal (comparte geo/textura)
+  };
+  mpEnsureProto();
+  if(mpProto.ready) build(); else mpProto.queue.push(build);
   scene.add(g);
   return holder;
 }
@@ -1870,6 +1901,7 @@ function mpAddPlayer(id,name,state){
 }
 function mpRemovePlayer(id){
   const o=MP.others[id]; if(!o) return;
+  o.h.dead=true;                       // por si el build() aun estaba en cola
   scene.remove(o.h.grp); delete MP.others[id];
 }
 function mpSetClip(h,name){
