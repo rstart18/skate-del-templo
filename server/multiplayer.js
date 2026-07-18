@@ -2,12 +2,22 @@
 // Sin fisica en servidor: cada cliente simula su skater y aqui solo se
 // reenvia {posicion, rotacion, clip} a los demas jugadores del mundo.
 //
-//   npm run mp        (puerto 8124; MP_PORT para cambiarlo)
+//   local:  npm run mp        (puerto 8124; MP_PORT para cambiarlo)
+//   Render: usa el PORT que asigna la plataforma; el WS va sobre HTTP para
+//           que pasen los health-checks y se pueda visitar la URL.
 //
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
-const PORT = process.env.MP_PORT || 8124;
-const wss = new WebSocketServer({ port: PORT });
+const PORT = process.env.PORT || process.env.MP_PORT || 8124;
+
+// Servidor HTTP: responde 200 a cualquier GET (health-check de Render + una
+// pagina simple de estado). El WebSocket se engancha a este mismo servidor.
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end(`SKATE DEL TEMPLO — servidor multijugador OK. ${players.size} en linea.`);
+});
+const wss = new WebSocketServer({ server });
 
 let nextId = 1;
 const players = new Map(); // id -> {ws, name, state}
@@ -58,4 +68,6 @@ wss.on('connection', (ws) => {
   ws.on('error', () => {});
 });
 
-console.log(`SKATE DEL TEMPLO multijugador en ws://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`SKATE DEL TEMPLO multijugador escuchando en puerto ${PORT}`);
+});

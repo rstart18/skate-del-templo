@@ -1,0 +1,13 @@
+# Despliegue del servidor multijugador de SKATE DEL TEMPLO en Render.com
+# (free tier). Render detecta este archivo al conectar el repo y crea el
+# servicio automaticamente. El WebSocket va sobre HTTPS -> wss://<host>.
+services:
+  - type: web
+    name: skate-del-templo-mp
+    runtime: node
+    plan: free
+    rootDir: server           # solo instala 'ws' (package.json propio, rapido)
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /         # el servidor responde 200 en GET /
+    autoDeploy: true           # redeploy en cada push a la rama por defecto

@@ -1,0 +1,12 @@
+{
+  "name": "skate-del-templo-mp",
+  "version": "1.0.0",
+  "description": "Servidor multijugador (relevo WebSocket) de SKATE DEL TEMPLO",
+  "private": true,
+  "scripts": {
+    "start": "node multiplayer.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
