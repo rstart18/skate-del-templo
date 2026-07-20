@@ -1427,6 +1427,9 @@ function bajarMoto(){
   S.x=m.grp.position.x-Math.cos(S.heading)*1.2; S.z=m.grp.position.z+Math.sin(S.heading)*1.2;
   S.speed=0; S.wheelie=0; S.riding=null; m.ridden=false; boardGrp.visible=true;
   document.body.classList.remove('riding');
+  m.grp.rotation.order='XYZ';
+  skater.rotation.order='XYZ';
+  skater.rotation.set(0,S.heading,0);         // limpiar la inclinacion del caballito (evita quedar tumbado)
   if(skaterModel) skaterModel.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
 }
 function caidaMoto(){
@@ -1455,8 +1458,8 @@ function stepMoto(dt){
      se cae; si vuelve a ~0 (adelante) se sigue manejando normal. */
   const WMAX=WHEELIE_MAX;                 // punto de volcarse hacia atras
   const gasActivo=up&&S.speed>3;
-  let liftIn=keys[' ']?1:0;               // PC
-  if(gasActivo&&joyY>0.15) liftIn=Math.max(liftIn,joyY);   // movil: acelerar + stick arriba
+  let liftIn=keys[' ']?1:0;               // PC: espacio
+  if(gasActivo&&joyY<-0.15) liftIn=Math.max(liftIn,-joyY);   // movil: acelerar + stick ABAJO
   if(gasActivo&&liftIn>0){
     S.wheelie+=(0.9*liftIn)*dt;           // sube proporcional al input
   }else{
@@ -1466,7 +1469,11 @@ function stepMoto(dt){
   if(S.wheelie>WMAX){                      // se paso hacia atras -> caida
     S.wheelie=0; caidaMoto(); return;
   }
+  // La inclinacion del caballito va en el eje LOCAL de la moto (orden 'YXZ':
+  // primero el rumbo, luego el pitch), asi la rueda DELANTERA sube siempre,
+  // mire hacia donde mire. rotation.x negativo levanta el frente (+Z local).
   const m=S.riding;
+  m.grp.rotation.order='YXZ'; skater.rotation.order='YXZ';
   m.grp.position.set(S.x,S.y+S.wheelie*0.12,S.z); m.grp.rotation.set(-S.wheelie,S.heading,S.motoLean);
   skater.position.set(S.x,S.y+S.wheelie*0.12,S.z); skater.rotation.set(-S.wheelie*0.85,S.heading,S.motoLean);
   const fx=Math.sin(S.heading),fz=Math.cos(S.heading);
@@ -1800,12 +1807,13 @@ const elMotoPrompt=document.getElementById('motoprompt'), elMotoBtn=document.get
 let motoCerca=false;
 function motoUI(){
   const cerca=S.riding?true:!!motoCercana();
+  const isTouch=document.body.classList.contains('touch');
   if(cerca!==motoCerca){
     motoCerca=cerca;
-    elMotoPrompt.style.display=cerca?'block':'none';
+    elMotoPrompt.style.display=(cerca&&!isTouch)?'block':'none';   // en movil el boton MOTO basta
     elMotoBtn.classList.toggle('show',cerca);
   }
-  if(cerca)elMotoPrompt.textContent=S.riding?'🏍️ E — Bajar de la moto':'🏍️ E — Montar';
+  if(cerca&&!isTouch)elMotoPrompt.textContent=S.riding?'🏍️ E — Bajar de la moto':'🏍️ E — Montar';
   // barra de equilibrio del caballito
   const wheelie=S.riding&&S.wheelie>0.03;
   elWbar.style.display=wheelie?'block':'none';
