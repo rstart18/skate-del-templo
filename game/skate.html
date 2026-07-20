@@ -26,6 +26,17 @@
     padding:8px 16px;z-index:22;display:none}
   #t-moto{left:50%;transform:translateX(-50%);bottom:24vmin;width:15vmin;height:15vmin;font-size:3vmin;display:none}
   body.touch #t-moto.show{display:flex}
+  /* --- moto: botones de gas/reversa (reemplazan a los de skate al conducir) --- */
+  #t-accel{right:5vmin;bottom:5vmin;width:21vmin;height:21vmin;font-size:4vmin}
+  #t-reverse{right:28vmin;bottom:7vmin;width:15vmin;height:15vmin;font-size:3.4vmin}
+  body.touch.riding #t-pedal,body.touch.riding #t-ollie,body.touch.riding #t-j,
+  body.touch.riding #t-k,body.touch.riding #t-l,body.touch.riding #t-h{display:none}
+  body.touch.riding #t-accel,body.touch.riding #t-reverse{display:flex}
+  /* --- barra de equilibrio del caballito --- */
+  #wheeliebar{position:fixed;left:20px;top:50%;transform:translateY(-50%);width:16px;height:180px;
+    background:rgba(10,12,20,.6);border:1px solid rgba(255,255,255,.3);border-radius:8px;z-index:22;display:none;overflow:hidden}
+  #wheeliezone{position:absolute;left:0;right:0;top:0;height:22%;background:rgba(255,77,77,.4)}   /* zona peligro (atras) */
+  #wheeliefill{position:absolute;left:0;right:0;bottom:0;height:0%;background:#9dff7a;transition:none}
   #trickpop{position:fixed;top:110px;left:50%;transform:translateX(-50%);color:#fff;font-size:18px;font-weight:700;
     text-shadow:0 2px 8px rgba(0,0,0,.7);z-index:10;text-align:center;pointer-events:none;transition:opacity .4s}
   #bail{position:fixed;top:40%;left:50%;transform:translateX(-50%) rotate(-6deg);color:#ff4d4d;font-size:56px;
@@ -105,6 +116,7 @@
 <div id="stancetag">SWITCH</div>
 <button id="micbtn" title="Micrófono (voz de proximidad)">🔇</button>
 <div id="motoprompt"></div>
+<div id="wheeliebar"><div id="wheeliezone"></div><div id="wheeliefill"></div></div>
 <div id="bail">¡BAIL!</div>
 <div id="controls">
   <b>W / ↑</b> patear (velocidad) &nbsp; <b>A·D / ←·→</b> girar<br>
@@ -131,6 +143,8 @@
   <div class="tbtn" id="t-full">⛶</div>
   <div class="tbtn" id="t-cam">📷</div>
   <div class="tbtn" id="t-moto">🏍️<br>MOTO</div>
+  <div class="tbtn" id="t-accel" data-key="w">GAS</div>
+  <div class="tbtn" id="t-reverse" data-key="s">REV</div>
 </div>
 
 <script src="lib/three.min.js"></script>
@@ -1148,6 +1162,7 @@ const S={
 };
 const keys={};
 let joyX=0;   // joystick tactil: -1..1 (0 = suelto); da giro ANALOGO proporcional
+let joyY=0;   // eje vertical del joystick (arriba = +); balance del caballito en moto
 addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()===' '?' ':e.key.toLowerCase()))e.preventDefault();
@@ -1227,6 +1242,7 @@ addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
       if(m>max){dx*=max/m;dy*=max/m;}
       setKnob(dx,dy);
       joyX=Math.max(-1,Math.min(1,dx/max));
+      joyY=Math.max(-1,Math.min(1,-dy/max));   // arriba = positivo (caballito)
       keys['a']=joyX<-0.35; keys['d']=joyX>0.35;
     };
     zone.addEventListener('pointerdown',e=>{
@@ -1244,7 +1260,7 @@ addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
     });
     zone.addEventListener('pointermove',e=>{if(e.pointerId===jid)move(e);});
     const jEnd=e=>{if(e.pointerId!==jid)return;jid=null;
-      joyX=0;keys['a']=false;keys['d']=false;setKnob(0,0);
+      joyX=0;joyY=0;keys['a']=false;keys['d']=false;setKnob(0,0);
       joy.style.display='none';};
     zone.addEventListener('pointerup',jEnd);
     zone.addEventListener('pointercancel',jEnd);
@@ -1388,6 +1404,7 @@ const GRAV=22,MAXSPD=17;
 
 /* ---------- MOTO: montar / conducir / bajar ---------- */
 const MOTO_MAX=30;
+const WHEELIE_MAX=1.15;   // angulo de caballito al que se vuelca hacia atras
 function motoCercana(){
   if(S.riding) return null;
   let best=null, bd=2.8;
@@ -1397,16 +1414,24 @@ function motoCercana(){
 function montarMoto(m){
   S.riding=m; m.ridden=true;
   S.x=m.grp.position.x; S.z=m.grp.position.z; S.heading=m.grp.rotation.y;
-  S.speed=0; S.grounded=true; S.trick=null; S.grinding=null; S.bailT=0; S.vy=0; S.motoLean=0;
+  S.speed=0; S.grounded=true; S.trick=null; S.grinding=null; S.bailT=0; S.vy=0; S.motoLean=0; S.wheelie=0;
   boardGrp.visible=false;
+  document.body.classList.add('riding');
   if(skaterModel) skaterModel.position.set(0.02,0.42,-0.28);   // pose sentado
 }
 function bajarMoto(){
   if(!S.riding) return;
   const m=S.riding;
+  m.grp.rotation.set(0,m.grp.rotation.y,0);   // enderezar la moto
   S.x=m.grp.position.x-Math.cos(S.heading)*1.2; S.z=m.grp.position.z+Math.sin(S.heading)*1.2;
-  S.speed=0; S.riding=null; m.ridden=false; boardGrp.visible=true;
+  S.speed=0; S.wheelie=0; S.riding=null; m.ridden=false; boardGrp.visible=true;
+  document.body.classList.remove('riding');
   if(skaterModel) skaterModel.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
+}
+function caidaMoto(){
+  bajarMoto();
+  S.bailT=1.4;                 // el skater se cae (clip 'fall')
+  pop('¡Caballito fallido!');
 }
 function stepMoto(dt){
   const up=keys['w']||keys['arrowup'], down=keys['s']||keys['arrowdown'];
@@ -1422,9 +1447,27 @@ function stepMoto(dt){
   if(!blocked){S.x=nx;S.z=nz;} else S.speed*=0.2;
   S.y=groundHeight(S.x,S.z);
   S.motoLean+=((steer*-0.4*Math.min(1,Math.abs(S.speed)/12))-S.motoLean)*Math.min(1,dt*6);
+
+  /* ---------- CABALLITO (wheelie) con barra de equilibrio ----------
+     PC: mantener ESPACIO. Movil: ACELERAR + joystick arriba (joyY).
+     El angulo sube con el input y baja solo; si se pasa hacia ATRAS (>MAX)
+     se cae; si vuelve a ~0 (adelante) se sigue manejando normal. */
+  const WMAX=WHEELIE_MAX;                 // punto de volcarse hacia atras
+  const gasActivo=up&&S.speed>3;
+  let liftIn=keys[' ']?1:0;               // PC
+  if(gasActivo&&joyY>0.15) liftIn=Math.max(liftIn,joyY);   // movil: acelerar + stick arriba
+  if(gasActivo&&liftIn>0){
+    S.wheelie+=(0.9*liftIn)*dt;           // sube proporcional al input
+  }else{
+    S.wheelie-=1.5*dt;                    // sin input/gas: la nariz baja
+  }
+  S.wheelie=Math.max(0,S.wheelie);
+  if(S.wheelie>WMAX){                      // se paso hacia atras -> caida
+    S.wheelie=0; caidaMoto(); return;
+  }
   const m=S.riding;
-  m.grp.position.set(S.x,S.y,S.z); m.grp.rotation.set(0,S.heading,S.motoLean);
-  skater.position.set(S.x,S.y,S.z); skater.rotation.set(0,S.heading,S.motoLean);
+  m.grp.position.set(S.x,S.y+S.wheelie*0.12,S.z); m.grp.rotation.set(-S.wheelie,S.heading,S.motoLean);
+  skater.position.set(S.x,S.y+S.wheelie*0.12,S.z); skater.rotation.set(-S.wheelie*0.85,S.heading,S.motoLean);
   const fx=Math.sin(S.heading),fz=Math.cos(S.heading);
   camera.position.lerp(new THREE.Vector3(S.x-fx*8,S.y+3.6,S.z-fz*8),Math.min(1,dt*4));
   camera.lookAt(S.x+fx*2,S.y+1.2,S.z+fz*2);
@@ -1751,7 +1794,8 @@ function trickPoseLayer(){
   }
 }
 
-const elMotoPrompt=document.getElementById('motoprompt'), elMotoBtn=document.getElementById('t-moto');
+const elMotoPrompt=document.getElementById('motoprompt'), elMotoBtn=document.getElementById('t-moto'),
+      elWbar=document.getElementById('wheeliebar'), elWfill=document.getElementById('wheeliefill');
 let motoCerca=false;
 function motoUI(){
   const cerca=S.riding?true:!!motoCercana();
@@ -1761,6 +1805,14 @@ function motoUI(){
     elMotoBtn.classList.toggle('show',cerca);
   }
   if(cerca)elMotoPrompt.textContent=S.riding?'🏍️ E — Bajar de la moto':'🏍️ E — Montar';
+  // barra de equilibrio del caballito
+  const wheelie=S.riding&&S.wheelie>0.03;
+  elWbar.style.display=wheelie?'block':'none';
+  if(wheelie){
+    const f=Math.min(1,S.wheelie/WHEELIE_MAX);
+    elWfill.style.height=(f*100)+'%';
+    elWfill.style.background=f>0.78?'#ff4d4d':(f>0.55?'#ffd257':'#9dff7a');
+  }
 }
 // boton tactil de la moto
 elMotoBtn.addEventListener('pointerdown',e=>{e.preventDefault();
