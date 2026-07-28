@@ -1021,7 +1021,7 @@ window.snap=function(px,py,pz,tx,ty,tz,w=900){
   let dragging=false, pid=null, lx=0, ly=0;
   const onBtn=t=>t && t.closest && (t.closest('.tbtn')||t.closest('#joy')||t.closest('#joyzone'));
   addEventListener('pointerdown',e=>{
-    if(camMode!=='first' || onBtn(e.target)) return;
+    if((camMode!=='first'&&!S.riding) || onBtn(e.target)) return;   // tambien al ir en moto
     dragging=true; pid=e.pointerId; lx=e.clientX; ly=e.clientY;
   });
   addEventListener('pointermove',e=>{
@@ -1039,7 +1039,7 @@ window.snap=function(px,py,pz,tx,ty,tz,w=900){
   if(!matchMedia('(pointer: fine)').matches) return;   // solo con mouse
   const cv=renderer.domElement;
   cv.addEventListener('click',()=>{
-    if((camMode==='first'||flyMode) && document.pointerLockElement!==cv && cv.requestPointerLock)
+    if((camMode==='first'||flyMode||S.riding) && document.pointerLockElement!==cv && cv.requestPointerLock)
       cv.requestPointerLock();
   });
   addEventListener('mousemove',e=>{
@@ -1049,7 +1049,7 @@ window.snap=function(px,py,pz,tx,ty,tz,w=900){
       fly.pitch = Math.max(-1.5, Math.min(1.5, fly.pitch - e.movementY*0.0032));
       return;
     }
-    if(camMode!=='first') return;
+    if(camMode!=='first'&&!S.riding) return;
     lookYaw   -= e.movementX*0.0032;
     lookPitch  = Math.max(-1.45, Math.min(1.1, lookPitch - e.movementY*0.0032));
   });
@@ -1477,16 +1477,23 @@ function stepMoto(dt){
   m.grp.position.set(S.x,S.y+S.wheelie*0.12,S.z); m.grp.rotation.set(-S.wheelie,S.heading,S.motoLean);
   skater.position.set(S.x,S.y+S.wheelie*0.12,S.z); skater.rotation.set(-S.wheelie*0.85,S.heading,S.motoLean);
   const fx=Math.sin(S.heading),fz=Math.cos(S.heading);
+  // El jugador puede MOVER la camara (arrastre tactil / mouse): lookYaw orbita,
+  // lookPitch sube/baja. Se recentra suave (al arrastrar, tu input lo supera; al
+  // soltar, vuelve solo a la vista por defecto para no desorientar al conducir).
+  lookYaw*=Math.pow(0.35,dt); lookPitch*=Math.pow(0.5,dt);
+  if(Math.abs(lookYaw)<0.004)lookYaw=0; if(Math.abs(lookPitch)<0.004)lookPitch=0;
+  const camAng=S.heading+lookYaw;
+  const cfx=Math.sin(camAng),cfz=Math.cos(camAng);
   // Camara: 3a persona normal; al hacer CABALLITO pasa a 1a persona (vista del
   // piloto) inclinandose hacia arriba para ver la rueda delantera y el cielo.
   const w=Math.min(1,S.wheelie/0.45);          // 0 = 3a persona, 1 = 1a persona
-  const tpPos=new THREE.Vector3(S.x-fx*8,S.y+3.6,S.z-fz*8);
+  const tpPos=new THREE.Vector3(S.x-cfx*8,Math.max(S.y+1.2,S.y+3.6-lookPitch*4),S.z-cfz*8);
   const tpLook=new THREE.Vector3(S.x+fx*2,S.y+1.2,S.z+fz*2);
   const eyeY=S.y+1.55+S.wheelie*0.12;
   const fpPos=new THREE.Vector3(S.x+fx*0.15,eyeY,S.z+fz*0.15);
-  const pitch=S.wheelie*0.85;                   // mirada hacia arriba con el caballito
+  const pitch=S.wheelie*0.85+lookPitch;         // caballito (arriba) + look del jugador
   const cp=Math.cos(pitch), sp=Math.sin(pitch);
-  const fpLook=new THREE.Vector3(S.x+fx*cp*10,eyeY+sp*10,S.z+fz*cp*10);
+  const fpLook=new THREE.Vector3(S.x+cfx*cp*10,eyeY+sp*10,S.z+cfz*cp*10);
   const targetPos=tpPos.lerp(fpPos,w);
   const look=tpLook.lerp(fpLook,w);
   camera.position.lerp(targetPos,Math.min(1,dt*(4+w*6)));
