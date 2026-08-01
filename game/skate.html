@@ -1430,7 +1430,7 @@ function bajarMoto(){
   m.grp.rotation.order='XYZ';
   skater.rotation.order='XYZ';
   skater.rotation.set(0,S.heading,0);         // limpiar la inclinacion del caballito (evita quedar tumbado)
-  if(skaterModel) skaterModel.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z);
+  if(skaterModel){ skaterModel.visible=true; skaterModel.position.set(SKATER_POS.x,SKATER_POS.y,SKATER_POS.z); }
 }
 function caidaMoto(){
   bajarMoto();
@@ -1487,16 +1487,33 @@ function stepMoto(dt){
   // Camara: 3a persona normal; al hacer CABALLITO pasa a 1a persona (vista del
   // piloto) inclinandose hacia arriba para ver la rueda delantera y el cielo.
   const w=Math.min(1,S.wheelie/0.45);          // 0 = 3a persona, 1 = 1a persona
-  const tpPos=new THREE.Vector3(S.x-cfx*8,Math.max(S.y+1.2,S.y+3.6-lookPitch*4),S.z-cfz*8);
+  // En POV pleno el piloto no debe verse a si mismo (la gorra asomaba abajo)
+  if(skaterModel) skaterModel.visible = w<0.65;
+  // FOV: 62 en 3a persona; se abre a 100 (GoPro) al entrar a la 1a del caballito.
+  // (El FOV del skate vive en step(), que no corre al conducir: se maneja aqui.)
+  const mFov=62+w*38;
+  if(Math.abs(camera.fov-mFov)>0.3){ camera.fov+=(mFov-camera.fov)*Math.min(1,dt*8); camera.updateProjectionMatrix(); }
+  // 3a persona
+  const tpPos=new THREE.Vector3(S.x-cfx*7,Math.max(S.y+1.2,S.y+3.2-lookPitch*4),S.z-cfz*7);
   const tpLook=new THREE.Vector3(S.x+fx*2,S.y+1.2,S.z+fz*2);
-  const eyeY=S.y+1.55+S.wheelie*0.12;
-  const fpPos=new THREE.Vector3(S.x+fx*0.15,eyeY,S.z+fz*0.15);
-  const pitch=S.wheelie*0.85+lookPitch;         // caballito (arriba) + look del jugador
+  // 1a persona (caballito): CASCO ANCLADO A LA MOTO — el offset del ojo rota
+  // CON el pitch del caballito alrededor del centro de la moto (como ir sentado
+  // de verdad). Asi el manubrio queda abajo-centro, la rueda delantera sube en
+  // cuadro contra el cielo, y la cabeza del piloto (que rota igual) queda
+  // siempre DETRAS de la camara y nunca se ve.
+  const th=S.wheelie;
+  const oy=1.45, oz=0.35;                       // offset local del casco (altura, adelante)
+  const ryy=oy*Math.cos(th)+oz*Math.sin(th);    // offset rotado por el pitch de la moto
+  const rzz=-oy*Math.sin(th)+oz*Math.cos(th);
+  const lift=S.y+th*0.12;
+  const fpPos=new THREE.Vector3(S.x+fx*rzz,lift+ryy,S.z+fz*rzz);
+  const pitch=th*0.8+lookPitch;                 // mirada casi alineada con la moto
   const cp=Math.cos(pitch), sp=Math.sin(pitch);
-  const fpLook=new THREE.Vector3(S.x+cfx*cp*10,eyeY+sp*10,S.z+cfz*cp*10);
+  const fpLook=new THREE.Vector3(fpPos.x+cfx*cp*10,fpPos.y+sp*10,fpPos.z+cfz*cp*10);
   const targetPos=tpPos.lerp(fpPos,w);
   const look=tpLook.lerp(fpLook,w);
-  camera.position.lerp(targetPos,Math.min(1,dt*(4+w*6)));
+  // seguimiento firme: sin "liga" larga a alta velocidad; mas agil en 1a persona
+  camera.position.lerp(targetPos,Math.min(1,dt*(7+w*8)));
   camera.lookAt(look);
   updateHUD();
 }
