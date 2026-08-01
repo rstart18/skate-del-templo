@@ -43,3 +43,4 @@ skate-del-templo.zip
 
 # Node (Capacitor)
 node_modules/
+!assets/models/moto_gn125.glb
