@@ -743,6 +743,72 @@ farol(-34,0);farol(34,0);farol(-34,46);farol(34,46);farol(-12,64);farol(12,64);
   arbol(KX-1,KZ-5,1.2);                                 // el arbol de sombra de la esquina
 }
 
+/* ---------- CANCHA ESTE (satelite: cancha verde 37x28 cruzando la via) ---------- */
+{
+  const verdeCancha=new THREE.MeshStandardMaterial({color:0x3f7d4a,roughness:.9});
+  const c=new THREE.Mesh(new THREE.PlaneGeometry(13,11),verdeCancha);
+  c.rotation.x=-Math.PI/2; c.position.set(60,0.015,20.5); c.receiveShadow=true; scene.add(c);
+  // lineas blancas
+  const lin=new THREE.MeshStandardMaterial({color:0xe8e8e2,roughness:.8});
+  for(const [w,d,x,z] of [[13,.18,60,15.2],[13,.18,60,25.8],[.18,10.8,53.7,20.5],[.18,10.8,66.3,20.5],[.18,10.8,60,20.5]]){
+    const l=new THREE.Mesh(new THREE.PlaneGeometry(w,d),lin);
+    l.rotation.x=-Math.PI/2; l.position.set(x,0.02,z); scene.add(l);
+  }
+  // arcos/tableros en los extremos
+  for(const sg of [-1,1]){
+    box(.14,2.6,.14,M.metal,60+sg*6.2,1.3,20.5);
+    box(1.7,1.1,.1,M.muroBlanco,60+sg*6.2,2.6,20.5);
+  }
+}
+
+/* ---------- POLIDEPORTIVO OESTE (satelite: bodega de TECHO AZUL 40x27) ---------- */
+{
+  const azulTecho=new THREE.MeshStandardMaterial({color:0x2456a8,roughness:.55});
+  box(12,3.8,8,M.muroCrema,-62,1.9,45.5);
+  const techo=new THREE.Mesh(new THREE.BoxGeometry(13,.3,9),azulTecho);
+  techo.position.set(-62,4.1,45.5); techo.castShadow=true; scene.add(techo);
+  box(2.2,2.6,.2,M.metal,-56.1,1.3,45.5);   // porton metalico al frente
+  walls.push({minX:-68,maxX:-56,minZ:41.5,maxZ:49.5,h:3.8});
+}
+
+/* ---------- CLUB VILLA CAMPESTRE (SV esquina SE: muros blancos, porton verde,
+   valla de entrada, piscina y palmas adentro) ---------- */
+{
+  const muroClub=M.muroBlanco;
+  const CX=58, CZ=92;                        // centro del predio 16x24
+  // muros perimetrales (con vano del porton al oeste, hacia la via)
+  box(.4,2.2,24,muroClub,CX+8,1.1,CZ);                       // este
+  box(16,2.2,.4,muroClub,CX,1.1,CZ-12);                      // norte
+  box(16,2.2,.4,muroClub,CX,1.1,CZ+12);                      // sur
+  box(.4,2.2,7,muroClub,CX-8,1.1,CZ-8.5);                    // oeste norte
+  box(.4,2.2,7,muroClub,CX-8,1.1,CZ+8.5);                    // oeste sur
+  walls.push({minX:CX-8.2,maxX:CX+8.2,minZ:CZ-12.2,maxZ:CZ-11.8,h:2.2});
+  walls.push({minX:CX-8.2,maxX:CX+8.2,minZ:CZ+11.8,maxZ:CZ+12.2,h:2.2});
+  walls.push({minX:CX+7.8,maxX:CX+8.2,minZ:CZ-12.2,maxZ:CZ+12.2,h:2.2});
+  walls.push({minX:CX-8.2,maxX:CX-7.8,minZ:CZ-12.2,maxZ:CZ-5,h:2.2});
+  walls.push({minX:CX-8.2,maxX:CX-7.8,minZ:CZ+5,maxZ:CZ+12.2,h:2.2});
+  // porton VERDE (dos hojas) en el vano oeste
+  const verdePorton=new THREE.MeshStandardMaterial({color:0x2e6b46,roughness:.6,metalness:.3});
+  box(.15,2.0,4.6,verdePorton,CX-8,1.0,CZ-2.6);
+  box(.15,2.0,4.6,verdePorton,CX-8,1.0,CZ+2.6);
+  walls.push({minX:CX-8.2,maxX:CX-7.8,minZ:CZ-5,maxZ:CZ+5,h:2});
+  // valla publicitaria del club sobre postes (como en SV)
+  box(.14,3.2,.14,M.metal,CX-9.5,1.6,CZ-7);
+  box(.14,3.2,.14,M.metal,CX-9.5,1.6,CZ-3);
+  const valla=new THREE.Mesh(new THREE.BoxGeometry(.12,2.2,4.6),
+    new THREE.MeshStandardMaterial({color:0x2d7fd3,roughness:.7}));
+  valla.position.set(CX-9.5,3.5,CZ-5); valla.castShadow=true; scene.add(valla);
+  // adentro: piscina azul, salon de teja y sombra
+  const agua=new THREE.MeshStandardMaterial({color:0x3fa8d8,roughness:.25});
+  const p=new THREE.Mesh(new THREE.PlaneGeometry(6,9),agua);
+  p.rotation.x=-Math.PI/2; p.position.set(CX+3,0.02,CZ+3); scene.add(p);
+  box(7,3,5,M.muroCrema,CX-3,1.5,CZ-8);
+  const tejaC=new THREE.Mesh(new THREE.BoxGeometry(7.8,.25,5.8),
+    new THREE.MeshStandardMaterial({color:0xb3502e,roughness:.85}));
+  tejaC.position.set(CX-3,3.2,CZ-8); tejaC.castShadow=true; scene.add(tejaC);
+  walls.push({minX:CX-6.5,maxX:CX+.5,minZ:CZ-10.5,maxZ:CZ-5.5,h:3});
+}
+
 /* ============================================================
    ALTURA DEL SUELO
    ============================================================ */
@@ -803,6 +869,37 @@ function buildSitio(){
   rg.fillRect(0,12,128,3); rg.fillRect(0,50,128,3);
   const rejaTexBase=new THREE.CanvasTexture(rc);
 
+  // cerca de PIEDRA + hierro negro: el tramo real FRENTE AL TEMPLO (Street View
+  // este) tiene base de mamposteria de piedra en vez de pilares blancos.
+  function cercaPiedra(x1,z1,x2,z2){
+    const dx=x2-x1, dz=z2-z1, len=Math.hypot(dx,dz), ang=Math.atan2(dz,dx);
+    const base=new THREE.Mesh(new THREE.BoxGeometry(len,.5,.4),M.piedraReal);
+    base.position.set((x1+x2)/2,.25,(z1+z2)/2); base.rotation.y=-ang; base.receiveShadow=true; base.castShadow=true; scene.add(base);
+    const n=Math.max(2,Math.round(len/4.4)+1);
+    for(let i=0;i<n;i++){ const t=i/(n-1); box(.34,1.5,.34,M.piedraReal,x1+dx*t,0.75,z1+dz*t); }
+    const tex=rejaTexBase.clone(); tex.needsUpdate=true;
+    tex.wrapS=THREE.RepeatWrapping; tex.repeat.x=len/2.4;
+    const panel=new THREE.Mesh(new THREE.PlaneGeometry(len,.86),
+      new THREE.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.25,side:THREE.DoubleSide,roughness:.5}));
+    panel.position.set((x1+x2)/2,.95,(z1+z2)/2); panel.rotation.y=-ang+Math.PI/2; scene.add(panel);
+    const rail=new THREE.Mesh(new THREE.BoxGeometry(len,.07,.07),negro);
+    rail.position.set((x1+x2)/2,1.42,(z1+z2)/2); rail.rotation.y=-ang; rail.castShadow=true; scene.add(rail);
+    rails.push({x1,z1,x2,z2,y:1.42});
+    walls.push({minX:Math.min(x1,x2)-.25,maxX:Math.max(x1,x2)+.25,minZ:Math.min(z1,z2)-.25,maxZ:Math.max(z1,z2)+.25,h:1.5});
+  }
+  // cerca VERDE metalica: el tramo oeste-sur del parque (Street View Cl 10)
+  function cercaVerde(x1,z1,x2,z2){
+    const verde=new THREE.MeshStandardMaterial({color:0x2e5d3a,roughness:.6,metalness:.3});
+    const dx=x2-x1, dz=z2-z1, len=Math.hypot(dx,dz), ang=Math.atan2(dz,dx);
+    const n=Math.max(2,Math.round(len/3.2)+1);
+    for(let i=0;i<n;i++){ const t=i/(n-1); box(.12,1.5,.12,verde,x1+dx*t,0.75,z1+dz*t); }
+    for(const ry of [.5,1.0,1.45]){
+      const rail=new THREE.Mesh(new THREE.BoxGeometry(len,.06,.06),verde);
+      rail.position.set((x1+x2)/2,ry,(z1+z2)/2); rail.rotation.y=-ang; rail.castShadow=true; scene.add(rail);
+    }
+    rails.push({x1,z1,x2,z2,y:1.45});
+    walls.push({minX:Math.min(x1,x2)-.2,maxX:Math.max(x1,x2)+.2,minZ:Math.min(z1,z2)-.2,maxZ:Math.max(z1,z2)+.2,h:1.5});
+  }
   function cerca(x1,z1,x2,z2){
     const dx=x2-x1, dz=z2-z1, len=Math.hypot(dx,dz), ang=Math.atan2(dz,dx);
     const n=Math.max(2,Math.round(len/4.4)+1);
@@ -820,12 +917,18 @@ function buildSitio(){
     walls.push({minX:Math.min(x1,x2)-.25,maxX:Math.max(x1,x2)+.25,minZ:Math.min(z1,z2)-.25,maxZ:Math.max(z1,z2)+.25,h:1.35});
   }
   // perimetro con vanos: los quarter pipes ocupan x=+-45 en z~3..37
-  cerca(-44,-55,-44,0); cerca(-44,40,-44,108);
-  // cerca este de vuelta a x=44: el satelite muestra la carretera PEGADA al
-  // costado este del sitio (se deshace el corrimiento +8)
-  cerca(44,-55,44,0); cerca(44,40,44,108);
-  // cerca SUR movida al nuevo limite (ampliacion): la placa elevada queda
-  // DENTRO del parque como en la realidad; entrada central se conserva
+  cerca(-44,-55,-44,0);
+  // tramo oeste-sur: cerca VERDE metalica (Street View, cruce con Calle 10)
+  cercaVerde(-44,40,-44,108);
+  // FRENTE AL TEMPLO (este): cerca de PIEDRA + hierro con VANO de entrada y
+  // escalinata desde el anden (Street View este). Resto en pilares blancos.
+  cercaPiedra(44,-55,44,-44); cercaPiedra(44,-38,44,-10); cerca(44,-10,44,0);
+  cerca(44,40,44,108);
+  // escalinata de ENTRADA este (SV): dos peldaños bajos del anden al piso de losas
+  box(5.6,0.12,1.0,M.piedraReal,42.6,0.06,-41);
+  box(5.6,0.24,0.9,M.piedraReal,43.6,0.12,-41);
+  walls.push({minX:39.8,maxX:45.4,minZ:-41.5,maxZ:-40.5,h:0.24,walkTop:true});
+  // cerca SUR en el nuevo limite (entrada central conservada)
   cerca(-44,110,-6,110); cerca(6,110,44,110);
 
   /* ---------- PISCINA A NIVEL DE PISO, pegada al borde este del templo ----------
@@ -894,8 +997,16 @@ function buildSitio(){
     const road=new THREE.Mesh(new THREE.PlaneGeometry(12,222),
       new THREE.MeshStandardMaterial({map:t,roughness:.95}));
     road.rotation.x=-Math.PI/2; road.position.set(sg*53,0.012,-1); road.receiveShadow=true; scene.add(road);
-    const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,222),M.concreto);
+    // anden de BALDOSA de arcilla (SV: baldosin de ladrillo, no concreto)
+    const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,222),
+      new THREE.MeshStandardMaterial({map:tx('ladrillo',2.2,90),color:0xc8987e,roughness:.9}));
     anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7,0.02,-1); anden.receiveShadow=true; scene.add(anden);
+  }
+  // berma de ARENA al costado oeste de la via oeste (SV tramo norte)
+  {
+    const arena=new THREE.MeshStandardMaterial({color:0xd4bd8f,roughness:1});
+    const b=new THREE.Mesh(new THREE.PlaneGeometry(4.5,222),arena);
+    b.rotation.x=-Math.PI/2; b.position.set(-61.5,0.011,-1); b.receiveShadow=true; scene.add(b);
   }
 
   // Casas coloniales de teja al otro lado de las calles
@@ -955,6 +1066,27 @@ function buildSitio(){
      [16,-92,9],[24,-97,11],[32,-105,9.5],[20,-110,8],[34,-93,10],[13,-102,10.5],
      [-6,-92,9.5],[6,-93,10]]
       .forEach(q=>palma2(q[0],q[1],q[2]));
+    // senderos de tierra internos (satelite: caminos cruzando el palmar)
+    const tierra=new THREE.MeshStandardMaterial({color:0x9b7c54,roughness:.95});
+    for(const [w,d,x,z,ry] of [[3,26,-20,-101,0.4],[3,30,22,-100,-0.5],[26,2.6,0,-93,0]]){
+      const s=new THREE.Mesh(new THREE.PlaneGeometry(w,d),tierra);
+      s.rotation.x=-Math.PI/2; s.rotation.z=ry; s.position.set(x,0.008,z); s.receiveShadow=true; scene.add(s);
+    }
+  }
+
+  /* ---- COLONNATA de palmas reales de la via este, tramo norte (SV: troncos
+     blancos altisimos en fila junto a la cerca) ---- */
+  [[41,-56,13],[41,-63,14],[41,-70,12.5],[41,-77,13.5],[41,-84,12],[41,-90,14]]
+    .forEach(q=>palma2(q[0],q[1],q[2]));
+
+  // palmas reales del Club Villa Campestre (asoman sobre los muros, SV)
+  [[58,86,12],[52,98,13],[63,100,12.5]].forEach(q=>palma2(q[0],q[1],q[2]));
+
+  /* ---- cruce de senderos del palmar SUR ---- */
+  {
+    const tierra=new THREE.MeshStandardMaterial({color:0x9b7c54,roughness:.95});
+    const s=new THREE.Mesh(new THREE.PlaneGeometry(30,3),tierra);
+    s.rotation.x=-Math.PI/2; s.position.set(-2,0.009,92); s.receiveShadow=true; scene.add(s);
   }
 }
 buildSitio();

@@ -18,20 +18,20 @@ Estados: ✅ fiel · 🔶 parcial (difiere en detalles) · ❌ falta/incorrecto 
 | 4 | Placa elevada (20×15, 1.5m, escalinata) | ✅ | detrás del templo; el usuario indica que su posición exacta "no tiene mucha relevancia" — se da por buena |
 | 5 | Explanada de arena (70×84 real) | ✅ | posición y proporción razonables (satélite) |
 | 6 | Piscina (lado este del templo) | ✅ | rediseño del usuario con sus fotos; existe aunque el satélite no la muestre |
-| 7 | Parque de palmeras NORTE (64×97) | 🔶 | sembrado (loop 2); faltan los senderos de tierra internos del satélite |
-| 8 | Palmar/bosque SUR caminable + sendero | 🔶 | sembrado (loop 1); densidad real es mayor; falta el cruce de senderos |
-| 9 | Vías este y oeste | 🔶 | extendidas a todo el mundo (loop 2); falta: berma de arena oeste (SV), parqueo diagonal oeste (satélite), cruces de calles laterales |
-| 10 | Cercas del parque | 🔶 | pilares blancos + rejas ✅ (SV norte/este); falta el tramo de **piedra + hierro frente al templo** (SV) y la **cerca verde metálica** del tramo oeste-sur (SV) |
-| 11 | Escalinata de entrada este del templo (desde el andén) | ❌ | SV la muestra clara; no existe en el juego |
-| 12 | Andenes de baldosa de ladrillo (SV) | 🔶 | hay andén de concreto; el real es baldosa de arcilla |
+| 7 | Parque de palmeras NORTE (64×97) | ✅ | sembrado + senderos de tierra internos (loop 4) |
+| 8 | Palmar/bosque SUR caminable + sendero | ✅ | sembrado + cruce de senderos (loop 4) |
+| 9 | Vías este y oeste | 🔶 | extendidas + berma de arena oeste + andenes de baldosa (loop 4); falta: parqueo diagonal, cruces laterales |
+| 10 | Cercas del parque | ✅ | 3 estilos reales: piedra+hierro frente al templo, pilares blancos norte/este/sur, verde metálica oeste-sur (loop 4) |
+| 11 | Escalinata de entrada este del templo | ✅ | vano en la cerca de piedra + 2 peldaños (loop 4) |
+| 12 | Andenes de baldosa de ladrillo | ✅ | textura de baldosa aplicada a ambos andenes (loop 4) |
 | 13 | Tamarindo histórico (NE, copa enorme) | 🔶 | hay tamarindos; validar el GRANDE de la esquina NE con SV |
-| 14 | Colonnata de palmas reales vía este norte (SV) | ❌ | pendiente |
+| 14 | Colonnata de palmas reales vía este norte | ✅ | 6 palmas reales altas en fila (loop 4) |
 | 15 | ~~Monumento/obelisco~~ | ✅ | **ELIMINADO** (con sus barandales) — el usuario confirma que no existe en el parque real |
-| 16 | Club Villa Campestre (esquina SE: valla, portón verde, muros blancos, piscina) | ❌ | pendiente |
+| 16 | Club Villa Campestre | ✅ | predio amurallado blanco, portón verde, valla, piscina, salón de teja, palmas (loop 4) |
 | 17 | Kiosco esquina oeste (Cl 10) | ✅ | construido (loop 1) validado en cenital |
 | 18 | Casas coloniales del borde | 🔶 | volumetría ok; texturas reales (calados, tapia) capturadas en SV sin aplicar |
-| 19 | Cancha este (37×28, cruzando la vía) | ❌ | pendiente |
-| 20 | Polideportivo oeste (techo azul) | ❌ | pendiente |
+| 19 | Cancha este | ✅ | cancha verde con líneas y arcos/tableros, cruzando la vía (loop 4, escala reducida por espacio) |
+| 20 | Polideportivo oeste (techo azul) | ✅ | bodega crema de techo azul con portón (loop 4) |
 
 ## Preguntas abiertas para el usuario
 
