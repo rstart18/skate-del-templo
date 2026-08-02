@@ -937,12 +937,13 @@ function buildSitio(){
   ag.fillStyle='#e8e8e2'; ag.fillRect(30,24,4,56); ag.fillRect(30,152,4,56);
   // carreteras en su posicion original (satelite: la del este pasa junto al sitio)
   for(const sg of [-1,1]){
-    const t=new THREE.CanvasTexture(ac); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,9);
-    const road=new THREE.Mesh(new THREE.PlaneGeometry(12,150),
+    const t=new THREE.CanvasTexture(ac); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,13);
+    // recorren TODO el mundo ampliado (satelite: las vias siguen a lo largo del parque)
+    const road=new THREE.Mesh(new THREE.PlaneGeometry(12,222),
       new THREE.MeshStandardMaterial({map:t,roughness:.95}));
-    road.rotation.x=-Math.PI/2; road.position.set(sg*53,0.012,5); road.receiveShadow=true; scene.add(road);
-    const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,150),M.concreto);
-    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7,0.02,5); anden.receiveShadow=true; scene.add(anden);
+    road.rotation.x=-Math.PI/2; road.position.set(sg*53,0.012,-1); road.receiveShadow=true; scene.add(road);
+    const anden=new THREE.Mesh(new THREE.PlaneGeometry(3.2,222),M.concreto);
+    anden.rotation.x=-Math.PI/2; anden.position.set(sg*45.7,0.02,-1); anden.receiveShadow=true; scene.add(anden);
   }
 
   // Casas coloniales de teja al otro lado de las calles
@@ -993,6 +994,15 @@ function buildSitio(){
      [9,80,9.5],[20,88,11],[10,98,8.5],[31,94,10],[23,105,9.5],[34,80,8.5]]
       .forEach(q=>palma2(q[0],q[1],q[2]));
     arbol(-26,90,1.4,true); arbol(27,99,1.3,true); arbol(15,76,1.1);
+  }
+
+  /* ---- PARQUE DE PALMERAS NORTE (satelite: palmar denso detras del templo,
+     64x97m con senderos de tierra; la placa elevada vive dentro de el) ---- */
+  {
+    [[-30,-92,11],[-34,-104,9.5],[-22,-110,10],[-16,-93,8.5],[-25,-98,10.5],
+     [16,-92,9],[24,-97,11],[32,-105,9.5],[20,-110,8],[34,-93,10],[13,-102,10.5],
+     [-6,-92,9.5],[6,-93,10]]
+      .forEach(q=>palma2(q[0],q[1],q[2]));
   }
 }
 buildSitio();
