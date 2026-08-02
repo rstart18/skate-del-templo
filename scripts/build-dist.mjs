@@ -20,6 +20,7 @@ const files = [
   'assets/models_final/skater.glb',            // skater riggeado (4 clips)
   'assets/models_optimized/7c695f3c94f30352_opt.glb', // banca colonial
   'assets/textures/deck_snaikyy.png',
+  'assets/textures/tex_placa_concreto.jpg',
   'assets/textures/tex_piedra_colonial.jpg',
   'assets/textures/tex_yeso_cupula.jpg',
 ];
