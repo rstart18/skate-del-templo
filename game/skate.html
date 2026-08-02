@@ -27,12 +27,13 @@
   #t-moto{left:50%;transform:translateX(-50%);bottom:24vmin;width:15vmin;height:15vmin;font-size:3vmin;display:none}
   body.touch #t-moto.show{display:flex}
   /* --- moto: botones de gas/reversa (reemplazan a los de skate al conducir) --- */
-  #t-accel,#t-reverse{display:none}    /* ocultos por defecto (solo al conducir) */
+  #t-accel,#t-reverse,#t-fire{display:none}    /* ocultos por defecto (solo al conducir) */
+  #t-fire{right:28vmin;bottom:24vmin;width:13vmin;height:13vmin;font-size:5vmin}
   #t-accel{right:5vmin;bottom:5vmin;width:21vmin;height:21vmin;font-size:4vmin}
   #t-reverse{right:28vmin;bottom:7vmin;width:15vmin;height:15vmin;font-size:3.4vmin}
   body.touch.riding #t-pedal,body.touch.riding #t-ollie,body.touch.riding #t-j,
   body.touch.riding #t-k,body.touch.riding #t-l,body.touch.riding #t-h{display:none}
-  body.touch.riding #t-accel,body.touch.riding #t-reverse{display:flex}
+  body.touch.riding #t-accel,body.touch.riding #t-reverse,body.touch.riding #t-fire{display:flex}
   /* --- barra de equilibrio del caballito --- */
   #wheeliebar{position:fixed;left:20px;top:50%;transform:translateY(-50%);width:16px;height:180px;
     background:rgba(10,12,20,.6);border:1px solid rgba(255,255,255,.3);border-radius:8px;z-index:22;display:none;overflow:hidden}
@@ -146,6 +147,7 @@
   <div class="tbtn" id="t-moto">🏍️<br>MOTO</div>
   <div class="tbtn" id="t-accel" data-key="w">GAS</div>
   <div class="tbtn" id="t-reverse" data-key="s">REV</div>
+  <div class="tbtn" id="t-fire">💥</div>
 </div>
 
 <script src="lib/three.min.js"></script>
@@ -1394,6 +1396,7 @@ addEventListener('keydown',e=>{
   if(k==='c'){toggleCam();}
   if(k==='v'){toggleFly();}
   if(k==='e'){ if(S.riding)bajarMoto(); else{ const m=motoCercana(); if(m)montarMoto(m); } }
+  if(k==='f'&&S.riding){ motoBackfire(); }
   // truco DESDE un grind/boardslide: hop automatico del riel; si caes de nuevo
   // sobre el tubo re-enganchas (50-50 o boardslide con A/D) y el combo sigue
   if(S.grinding&&!S.trick&&S.bailT<=0&&!e.repeat&&(k==='j'||k==='k'||k==='l'||k==='h')){
@@ -1658,7 +1661,57 @@ function caidaMoto(){
   S.bailT=1.4;                 // el skater se cae (clip 'fall')
   pop('¡Caballito fallido!');
 }
+
+/* ---------- DISPARO DE AIRE (backfire) de la moto ----------
+   Boton 💥 (movil, solo montado) o tecla F. Sonido sintetizado con WebAudio
+   (estallido de ruido filtrado + golpe grave + pop de eco) — se puede
+   reemplazar por una grabacion real del usuario cuando la mande. */
+let audioCtx=null, fireCd=0, fireFlash=null;
+function motoBackfire(){
+  if(!S.riding || fireCd>0) return;
+  fireCd=0.4;
+  try{
+    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const t0=audioCtx.currentTime, sr=audioCtx.sampleRate, dur=0.35;
+    const buf=audioCtx.createBuffer(1,sr*dur,sr), d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++){ const t=i/d.length; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.2); }
+    // estallido principal
+    const src=audioCtx.createBufferSource(); src.buffer=buf;
+    const lp=audioCtx.createBiquadFilter(); lp.type='lowpass';
+    lp.frequency.setValueAtTime(2600,t0); lp.frequency.exponentialRampToValueAtTime(220,t0+dur);
+    const g=audioCtx.createGain();
+    g.gain.setValueAtTime(0.85,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    src.connect(lp); lp.connect(g); g.connect(audioCtx.destination); src.start(t0);
+    // golpe grave (el "pecho" del disparo)
+    const o=audioCtx.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(120,t0); o.frequency.exponentialRampToValueAtTime(45,t0+0.18);
+    const g2=audioCtx.createGain();
+    g2.gain.setValueAtTime(0.7,t0); g2.gain.exponentialRampToValueAtTime(0.001,t0+0.2);
+    o.connect(g2); g2.connect(audioCtx.destination); o.start(t0); o.stop(t0+0.22);
+    // pop de eco (tra-CA)
+    const src2=audioCtx.createBufferSource(); src2.buffer=buf;
+    const lp2=audioCtx.createBiquadFilter(); lp2.type='lowpass'; lp2.frequency.value=900;
+    const g3=audioCtx.createGain();
+    g3.gain.setValueAtTime(0.0001,t0); g3.gain.setValueAtTime(0.3,t0+0.11);
+    g3.gain.exponentialRampToValueAtTime(0.001,t0+0.32);
+    src2.connect(lp2); lp2.connect(g3); g3.connect(audioCtx.destination); src2.start(t0+0.1);
+  }catch(_){}
+  // fogonazo en la punta del mofle (atras-derecha, bajo)
+  if(!fireFlash){
+    fireFlash=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),
+      new THREE.MeshBasicMaterial({color:0xffb545,transparent:true,opacity:0.95}));
+    fireFlash.visible=false; scene.add(fireFlash);
+  }
+  const ffx=Math.sin(S.heading), ffz=Math.cos(S.heading);
+  const rx=Math.sin(S.heading+Math.PI/2), rz=Math.cos(S.heading+Math.PI/2);   // lado DERECHO (el mofle)
+  fireFlash.position.set(S.x-ffx*0.95+rx*0.22, S.y+0.32, S.z-ffz*0.95+rz*0.22);
+  fireFlash.scale.setScalar(0.8+Math.random()*0.7);
+  fireFlash.visible=true;
+  setTimeout(()=>{ if(fireFlash)fireFlash.visible=false; },110);
+}
 function stepMoto(dt){
+  fireCd=Math.max(0,fireCd-dt);
   const up=keys['w']||keys['arrowup'], down=keys['s']||keys['arrowdown'];
   const left=keys['a']||keys['arrowleft'], right=keys['d']||keys['arrowright'];
   if(up) S.speed=Math.min(MOTO_MAX,S.speed+16*dt);
@@ -2083,6 +2136,8 @@ function motoUI(){
 // boton tactil de la moto
 elMotoBtn.addEventListener('pointerdown',e=>{e.preventDefault();
   if(S.riding)bajarMoto(); else{ const m=motoCercana(); if(m)montarMoto(m); }});
+// boton 💥: disparo de aire
+document.getElementById('t-fire').addEventListener('pointerdown',e=>{e.preventDefault();motoBackfire();});
 
 function animate(){
   requestAnimationFrame(animate);
