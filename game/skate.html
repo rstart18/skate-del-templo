@@ -1007,6 +1007,13 @@ function buildSitio(){
     const arena=new THREE.MeshStandardMaterial({color:0xd4bd8f,roughness:1});
     const b=new THREE.Mesh(new THREE.PlaneGeometry(4.5,222),arena);
     b.rotation.x=-Math.PI/2; b.position.set(-61.5,0.011,-1); b.receiveShadow=true; scene.add(b);
+    // parqueo DIAGONAL sobre la via oeste a la altura del templo (satelite)
+    const raya=new THREE.MeshStandardMaterial({color:0xe8e8e2,roughness:.8});
+    for(let i=0;i<6;i++){
+      const r=new THREE.Mesh(new THREE.PlaneGeometry(.22,3.4),raya);
+      r.rotation.x=-Math.PI/2; r.rotation.z=0.6;
+      r.position.set(-49.5,0.016,-30+i*4.2); scene.add(r);
+    }
   }
 
   // Casas coloniales de teja al otro lado de las calles

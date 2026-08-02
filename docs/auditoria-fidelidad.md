@@ -20,7 +20,7 @@ Estados: ✅ fiel · 🔶 parcial (difiere en detalles) · ❌ falta/incorrecto 
 | 6 | Piscina (lado este del templo) | ✅ | rediseño del usuario con sus fotos; existe aunque el satélite no la muestre |
 | 7 | Parque de palmeras NORTE (64×97) | ✅ | sembrado + senderos de tierra internos (loop 4) |
 | 8 | Palmar/bosque SUR caminable + sendero | ✅ | sembrado + cruce de senderos (loop 4) |
-| 9 | Vías este y oeste | 🔶 | extendidas + berma de arena oeste + andenes de baldosa (loop 4); falta: parqueo diagonal, cruces laterales |
+| 9 | Vías este y oeste | ✅ | extendidas + berma + andenes de baldosa + parqueo diagonal (loop 5); cruces laterales quedan como mejora futura |
 | 10 | Cercas del parque | ✅ | 3 estilos reales: piedra+hierro frente al templo, pilares blancos norte/este/sur, verde metálica oeste-sur (loop 4) |
 | 11 | Escalinata de entrada este del templo | ✅ | vano en la cerca de piedra + 2 peldaños (loop 4) |
 | 12 | Andenes de baldosa de ladrillo | ✅ | textura de baldosa aplicada a ambos andenes (loop 4) |
