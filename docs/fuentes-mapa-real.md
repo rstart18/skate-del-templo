@@ -53,3 +53,14 @@ Paneles: `tools/sv_hallazgos.jpg`, `tools/sv_hallazgos2.jpg`.
    cerca verde metálica en ese tramo del parque.
 10. Texturas de referencia capturadas: pared colonial con calados + teja,
     tapia pisada, muros blancos con teja.
+11. **PLACA ELEVADA con escalinata** (señalada por el usuario, confirmada en
+    SV): plataforma plana elevada con escaleras para subir, dentro del parque
+    en la zona sur-central bajo el dosel. Posición triangulada:
+    **≈ 7.82818, -72.46296 (±15 m)** — en coords del juego ≈ (x −37, z +82
+    relativo a la cúpula), FUERA del límite actual del mapa (zona de
+    ampliación sur). Vista en `tools/sv3_placa_desde_norte_c.jpg` (pano
+    ZDfmF5rXtHwoIEEBx_3a9Q yaw 220) y en captura del usuario (pano "70",
+    may 2022, mirando O-NO). En la captura del usuario se ve ademas un posible
+    tablero de baloncesto cerca → podria ser placa polideportiva o tarima de
+    eventos. Confirmar tamaño exacto con foto del usuario o fotoesfera.
+    Paneles: `tools/placa_confirmada.jpg`.
