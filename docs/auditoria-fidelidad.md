@@ -14,8 +14,8 @@ Estados: ✅ fiel · 🔶 parcial (difiere en detalles) · ❌ falta/incorrecto 
 |---|------|--------|---------------------|
 | 1 | Templo (mesh Tripo, no tocar) | ✅ | cúpula + torre; escala aprobada por el usuario |
 | 2 | Nave en ruinas (45m, muros dentados, pilares cuadrados) | 🔶 | fiel en planta; REVISAR: alturas de muros vs fotos, arcos laterales de ladrillo (SV frente-este) |
-| 3 | Santuario de Santander (muro 3 arcos + estatua) | 🔶 | existe en el sitio (video usuario) ✅ pero **validar su posición exacta** — el usuario señala que el arco no está donde el juego lo pone respecto a la placa ❓ |
-| 4 | Placa elevada (20×15, 1.5m, escalinata) | 🔶 | movida detrás del templo (corrección usuario); **posición exacta y orientación de la escalinata** ❓ — pedir foto/pin del usuario; hoy queda alineada al eje del santuario y el usuario indica que así no es |
+| 3 | ~~Santuario de 3 arcos~~ | ✅ | **ELIMINADO** — el usuario confirma que ese arco NO existe. La estatua de Santander con su pedestal sí queda (esa sí es real) |
+| 4 | Placa elevada (20×15, 1.5m, escalinata) | ✅ | detrás del templo; el usuario indica que su posición exacta "no tiene mucha relevancia" — se da por buena |
 | 5 | Explanada de arena (70×84 real) | ✅ | posición y proporción razonables (satélite) |
 | 6 | Piscina (lado este del templo) | ✅ | rediseño del usuario con sus fotos; existe aunque el satélite no la muestre |
 | 7 | Parque de palmeras NORTE (64×97) | 🔶 | sembrado (loop 2); faltan los senderos de tierra internos del satélite |
@@ -26,20 +26,17 @@ Estados: ✅ fiel · 🔶 parcial (difiere en detalles) · ❌ falta/incorrecto 
 | 12 | Andenes de baldosa de ladrillo (SV) | 🔶 | hay andén de concreto; el real es baldosa de arcilla |
 | 13 | Tamarindo histórico (NE, copa enorme) | 🔶 | hay tamarindos; validar el GRANDE de la esquina NE con SV |
 | 14 | Colonnata de palmas reales vía este norte (SV) | ❌ | pendiente |
-| 15 | Monumento/obelisco del juego | ❓ | el "monumento" del satélite era un tanque de agua; el obelisco real del parque no está confirmado en posición — fuente pendiente (foto usuario / fotos turísticas) |
+| 15 | ~~Monumento/obelisco~~ | ✅ | **ELIMINADO** (con sus barandales) — el usuario confirma que no existe en el parque real |
 | 16 | Club Villa Campestre (esquina SE: valla, portón verde, muros blancos, piscina) | ❌ | pendiente |
 | 17 | Kiosco esquina oeste (Cl 10) | ✅ | construido (loop 1) validado en cenital |
 | 18 | Casas coloniales del borde | 🔶 | volumetría ok; texturas reales (calados, tapia) capturadas en SV sin aplicar |
 | 19 | Cancha este (37×28, cruzando la vía) | ❌ | pendiente |
 | 20 | Polideportivo oeste (techo azul) | ❌ | pendiente |
 
-## Preguntas abiertas para el usuario (bloquean fidelidad exacta)
+## Preguntas abiertas para el usuario
 
-1. **Placa elevada**: ¿hacia dónde mira la escalinata y qué tan lejos está del
-   santuario/nave? (una foto o un pin en el mapa resuelve)
-2. **Santuario/arco**: ¿el muro de 3 arcos está pegado al fondo de la nave o
-   separado? ¿la placa queda a un costado y no en su eje?
-3. **Obelisco del juego**: ¿existe en el parque real y dónde?
+(Resueltas 2026-08-02: placa sin relevancia exacta ✓; el arco no existe →
+eliminado ✓; el obelisco no existe → eliminado ✓. Sin preguntas abiertas.)
 
 ## Reglas del loop (acordadas)
 
